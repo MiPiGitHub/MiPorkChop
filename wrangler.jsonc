@@ -1,5 +1,5 @@
 {
-  "name": "myporkchop-api",
+  "name": "miporkchop-api",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-22",
   "kv_namespaces": [
