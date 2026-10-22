@@ -9,7 +9,7 @@ const card=document.getElementById('card'),lamp=document.getElementById('lamp'),
 let last=null;
 function render(){
  const age=last?.lastSeen?Math.max(0,Math.floor((Date.now()-Date.parse(last.lastSeen))/1000)):null;
- const fresh=age!==null&&Number.isFinite(age)&&age<=180;
+ const fresh=age!==null&&Number.isFinite(age)&&age<=450;
  const state=fresh?last.state:'UNKNOWN';
  const known=state==='OPEN'||state==='CLOSED';
  card.className=known?(state==='OPEN'?'open':'closed'):'unknown';
