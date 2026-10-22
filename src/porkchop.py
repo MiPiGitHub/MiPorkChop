@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MiPorkChop 0.3: GPIO switch, LED, and Cloudflare status heartbeat."""
+"""MiPorkChop 0.3: physical circuit closed = GarageMahal OPEN (buzzin)."""
 import json
 import logging
 import os
@@ -51,8 +51,8 @@ def main():
             last_sent = None
             next_attempt = 0
             while not stop.is_set():
-                state = "CLOSED" if switch.is_pressed else "OPEN"
-                if state == "CLOSED":
+                state = "OPEN" if switch.is_pressed else "CLOSED"
+                if state == "OPEN":
                     led.on()
                 else:
                     led.off()
@@ -61,7 +61,7 @@ def main():
                     changed.clear()
                     try:
                         post_status(worker_url, token, state)
-                        logger.info("Reported switch state %s", state)
+                        logger.info("Reported GarageMahal state %s", state)
                         last_sent = state
                         next_attempt = time.monotonic() + HEARTBEAT_SECONDS
                     except (urllib.error.URLError, ValueError, TimeoutError, OSError) as exc:
