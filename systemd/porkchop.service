@@ -1,0 +1,17 @@
+[Unit]
+Description=MiPorkChop switch and LED
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=miporkchop
+WorkingDirectory=/opt/miporkchop
+EnvironmentFile=-/etc/miporkchop.env
+ExecStart=/usr/bin/python3 -u /opt/miporkchop/porkchop.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
