@@ -1,0 +1,11 @@
+{
+  "name": "myporkchop-api",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-22",
+  "kv_namespaces": [
+    {
+      "binding": "STATUS_KV",
+      "id": "fe07fe9ca8b64df093994715cd2231f4"
+    }
+  ]
+}
