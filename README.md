@@ -16,7 +16,7 @@ SPST switch (GPIO17) ──► Raspberry Pi: src/porkchop.py ── HTTPS POST /
 
 - **MiButcher.sh:** Optional Raspberry Pi installer/maintenance command. Does not run continuously.
 - **systemd/porkchop.service:** Linux service definition; runs `/opt/miporkchop/porkchop.py`.
-- **src/porkchop.py:** Reads GPIO, drives LED, reports changes and sends a heartbeat approximately every 60 seconds.
+- **src/porkchop.py:** Reads GPIO, drives LED, reports changes and sends a heartbeat approximately every 150 seconds.
 - **src/worker.js:** Runs at Cloudflare, accepts authenticated device writes, stores state in KV, and serves the public viewer and status API.
 - **src/viewer.html:** Readable source for the public UI; a copy is embedded in `worker.js` for direct Cloudflare dashboard deployment. **If the viewer changes, update both copies.**
 
@@ -26,7 +26,7 @@ SPST switch (GPIO17) ──► Raspberry Pi: src/porkchop.py ── HTTPS POST /
 |---|---|---|---|
 | CLOSED (grounded; `Button.is_pressed`) | `OPEN` | ON | 🟢 BOYS R BUZZIN' |
 | OPEN (internal pull-up) | `CLOSED` | OFF | 🔴 BOYS AIN'T BUZZIN' |
-| No fresh heartbeat for over 180 seconds | `UNKNOWN` (computed by Worker) | Not remotely verifiable | ⚪ SERVICE UNAVAILABLE |
+| No fresh heartbeat for over 450 seconds | `UNKNOWN` (computed by Worker) | Not remotely verifiable | ⚪ SERVICE UNAVAILABLE |
 
 API state values are **uppercase and case-sensitive**. They represent **GarageMahal availability**, not electrical contact position.
 
@@ -64,6 +64,8 @@ MiButcher commands: `install`, `update`, `token-update`, `uninstall`. Install pr
 
 **Manually observed October 22, 2026:** Cloudflare viewer loads; public status endpoint returned `UNKNOWN` / stale heartbeat; authenticated curl posts of `OPEN` displayed green and `CLOSED` displayed red. This confirms the cloud/viewer state convention, **not** the physical GPIO behavior.
 
-**Tomorrow's Pi test:** verify correct physical wiring and LED resistor; install MiButcher; check service account/GPIO permissions; close switch → LED ON / API `OPEN` / green viewer; open switch → LED OFF / API `CLOSED` / red viewer; reboot; terminate service; disconnect network; wait >3 minutes and confirm `UNKNOWN`; verify service logs and token secrecy.
+**Tomorrow's Pi test:** verify correct physical wiring and LED resistor; install MiButcher; check service account/GPIO permissions; close switch → LED ON / API `OPEN` / green viewer; open switch → LED OFF / API `CLOSED` / red viewer; reboot; terminate service; disconnect network; wait >7.5 minutes and confirm `UNKNOWN`; verify service logs and token secrecy.
 
 **Future improvements:** validate token before replacement, add installer rollback, run CI checks, consolidate viewer source into a reproducible Cloudflare deployment, consider rate limiting and more robust status freshness handling. No incoming connections or port forwarding to the Raspberry Pi are needed.
+
+October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare Worker must be redeployed after this GitHub change.
