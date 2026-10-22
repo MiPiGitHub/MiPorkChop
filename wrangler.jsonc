@@ -7,5 +7,13 @@
       "binding": "STATUS_KV",
       "id": "fe07fe9ca8b64df093994715cd2231f4"
     }
-  ]
+  ],
+  "previews": {
+    "kv_namespaces": [
+      {
+        "binding": "STATUS_KV",
+        "id": "25413d4200c04902b48399a8e354c901"
+      }
+    ]
+  }
 }
