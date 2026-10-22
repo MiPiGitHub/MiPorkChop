@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GarageMahal • MiPorkChop</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111827;color:white;text-align:center}main{width:min(90vw,500px);padding:2rem;border:1px solid #374151;border-radius:22px;background:#1f2937}h1{font-size:1.3rem;letter-spacing:.13em}.lamp{font-size:5rem;margin:1rem}.state{font-size:2rem;font-weight:900}.detail{font-size:1.2rem;margin-top:.6rem}.stamp{color:#cbd5e1;margin-top:1rem}.open .state{color:#4ade80}.closed .state{color:#f87171}.unknown .state{color:#d1d5db}
+</style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="stamp" id="stamp"></div></main>
+<script>
+const card=document.getElementById('card'),lamp=document.getElementById('lamp'),title=document.getElementById('state'),detail=document.getElementById('detail'),stamp=document.getElementById('stamp');
+let last=null;
+function render(){
+ const age=last?.lastSeen?Math.max(0,Math.floor((Date.now()-Date.parse(last.lastSeen))/1000)):null;
+ const fresh=age!==null&&Number.isFinite(age)&&age<=180;
+ const state=fresh?last.state:'UNKNOWN';
+ const known=state==='OPEN'||state==='CLOSED';
+ card.className=known?(state==='OPEN'?'open':'closed'):'unknown';
+ lamp.textContent=state==='OPEN'?'🟢':state==='CLOSED'?'🔴':'⚪';
+ title.textContent=state==='OPEN'?"BOYS R BUZZIN'":state==='CLOSED'?"BOYS AIN'T BUZZIN'":'SERVICE UNAVAILABLE';
+ detail.textContent=known?(state==='OPEN'?'GarageMahal is OPEN':'GarageMahal is CLOSED'):'GarageMahal status is unknown';
+ stamp.textContent=age===null?'No confirmed heartbeat':('Last confirmed '+(age<60?age+' seconds ago':Math.floor(age/60)+'m '+age%60+'s ago')+' • '+new Date(last.lastSeen).toLocaleString());
+}
+async function refresh(){
+ try{
+  const response=await fetch('/api/public-status',{cache:'no-store'});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  last=await response.json();
+ }catch(e){last=null;}
+ render();
+}
+refresh();setInterval(refresh,15000);setInterval(render,1000);
+</script></body></html>
