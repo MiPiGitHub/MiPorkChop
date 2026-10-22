@@ -1,5 +1,5 @@
 MiPorkChop — Raspberry Pi Installation Guide
-Development branch: 2026ReSmoked
+Baseline branch: main; hardware testing branch: 2026HardwareTesting
 Draft for hardware testing — October 22, 2026
 
 PURPOSE
@@ -22,13 +22,13 @@ PREREQUISITES
 If git is available, from the Pi terminal (as your normal user):
 
   cd "$HOME"
-  git clone --branch 2026ReSmoked --single-branch \
+  git clone --branch 2026HardwareTesting --single-branch \
     https://github.com/MiPiGitHub/MiPorkChop.git
   cd MiPorkChop
 
 If already cloned, use the existing checkout and pull the correct branch.
 For a private repository, use your approved GitHub authentication method.
-Alternatively, download the ZIP for 2026ReSmoked, extract it, then cd into
+Alternatively, download the ZIP for 2026HardwareTesting, extract it, then cd into
 the extracted folder containing MiButcher.sh, src/, and systemd/.
 
 2. PRE-FLIGHT CHECKS
@@ -48,7 +48,7 @@ supported by your MiPi OS/build; do not bypass the dependency check.
 
 The installer prompts for:
   Cloudflare Worker HTTPS base URL:
-    https://myporkchop-api.mipigithub.workers.dev
+    https://miporkchop-api.mipigithub.workers.dev
   Device API token: [typed invisibly; do not share]
 
 MiButcher copies:
@@ -82,11 +82,17 @@ Expected mapping:
   Switch contacts CLOSED -> green LED ON  -> API OPEN -> BOYS R BUZZIN'
   Switch contacts OPEN   -> green LED OFF -> API CLOSED -> BOYS AIN'T BUZZIN'
 
-Open the public viewer:
-  https://myporkchop-api.mipigithub.workers.dev/
+Open the preferred public viewer:
+  https://porkchop.mipi.support/
+
+Direct Worker fallback for troubleshooting:
+  https://miporkchop-api.mipigithub.workers.dev/
 
 And read-only JSON:
-  https://myporkchop-api.mipigithub.workers.dev/api/public-status
+  https://porkchop.mipi.support/api/public-status
+
+Fallback JSON:
+  https://miporkchop-api.mipigithub.workers.dev/api/public-status
 
 The Pi sends a status update on changes and about every 150 seconds.
 After more than 450 seconds without a heartbeat, the viewer should show
@@ -124,7 +130,7 @@ intentionally decommissioning credentials.
   sudo systemctl status porkchop --no-pager
   sudo journalctl -u porkchop -n 100 --no-pager
   /usr/bin/python3 -c "import gpiozero"
-  curl -fsS https://myporkchop-api.mipigithub.workers.dev/health
+  curl -fsS https://miporkchop-api.mipigithub.workers.dev/health
 
 Do not paste logs containing tokens. Health only proves the Worker responds,
 not that the Pi or KV data is current.
@@ -134,4 +140,4 @@ TEST STATUS
 - GitHub Actions: latest runs reported green by user.
 - Pi GPIO, MiButcher installation, reboot, and recovery: NOT YET TESTED.
 
-October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare Worker must be redeployed after this GitHub change.
+October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare GitHub Builds is connected to main for automatic deployment; confirm the active deployment in Cloudflare after changes merge to main.
