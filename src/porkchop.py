@@ -12,7 +12,7 @@ from gpiozero import Button, LED
 
 SWITCH_GPIO = 17
 LED_GPIO = 27
-HEARTBEAT_SECONDS = 60
+HEARTBEAT_SECONDS = 150
 logger = logging.getLogger("miporkchop")
 
 def post_status(url, token, state):
