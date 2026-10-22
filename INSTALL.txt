@@ -1,0 +1,137 @@
+MiPorkChop — Raspberry Pi Installation Guide
+Development branch: 2026ReSmoked
+Draft for hardware testing — October 22, 2026
+
+PURPOSE
+Install MiPorkChop as an OPTIONAL add-on after the normal MiPi Raspberry Pi
+build. Do not alter the standard MiPi installation scripts or services.
+MiButcher installs the local application; Cloudflare worker.js runs in
+Cloudflare, NOT on the Pi.
+
+PREREQUISITES
+- Raspberry Pi with completed standard MiPi build and working Internet.
+- Terminal/SSH access with sudo privileges.
+- Python 3 and gpiozero available to /usr/bin/python3.
+- GPIO17 input switch wired to ground using the Pi internal pull-up.
+- GPIO27 output LED wired through a 330-ohm current-limiting resistor.
+- Cloudflare Worker already deployed, STATUS_KV bound, device token available.
+- DO NOT paste the device token into GitHub, screenshots, or chat.
+- Confirm the standard MiPi build has not reserved GPIO17 or GPIO27.
+
+1. DOWNLOAD SOURCE
+If git is available, from the Pi terminal (as your normal user):
+
+  cd "$HOME"
+  git clone --branch 2026ReSmoked --single-branch \
+    https://github.com/MiPiGitHub/MiPorkChop.git
+  cd MiPorkChop
+
+If already cloned, use the existing checkout and pull the correct branch.
+For a private repository, use your approved GitHub authentication method.
+Alternatively, download the ZIP for 2026ReSmoked, extract it, then cd into
+the extracted folder containing MiButcher.sh, src/, and systemd/.
+
+2. PRE-FLIGHT CHECKS
+Run from the repository root:
+
+  bash -n MiButcher.sh
+  python3 -m py_compile src/porkchop.py
+  /usr/bin/python3 -c "import gpiozero"
+  test -f systemd/porkchop.service && echo "Service file found"
+
+If gpiozero is missing, stop and install the dependency using the method
+supported by your MiPi OS/build; do not bypass the dependency check.
+
+3. INSTALL (LEAVE DISABLED FOR FIRST TEST)
+
+  sudo bash MiButcher.sh install
+
+The installer prompts for:
+  Cloudflare Worker HTTPS base URL:
+    https://myporkchop-api.mipigithub.workers.dev
+  Device API token: [typed invisibly; do not share]
+
+MiButcher copies:
+  src/porkchop.py            -> /opt/miporkchop/porkchop.py
+  systemd/porkchop.service  -> /etc/systemd/system/porkchop.service
+  Worker URL and device token -> /etc/miporkchop.env (root-owned, mode 600)
+
+The source checkout can remain in your home directory. MiButcher does not
+copy worker.js or viewer.html to the Pi: those run/are served at Cloudflare.
+
+4. VERIFY INSTALLATION BEFORE STARTING
+
+  sudo systemctl cat porkchop
+  sudo systemctl is-enabled porkchop
+  sudo ls -l /opt/miporkchop/porkchop.py /etc/miporkchop.env
+  id miporkchop
+
+Expected: service definition points to /opt/miporkchop/porkchop.py,
+service initially disabled, token file restricted to root.
+Do NOT use cat on /etc/miporkchop.env while sharing terminal output.
+
+5. FIRST HARDWARE TEST (ONLY AFTER WIRING IS VERIFIED)
+Confirm the service account can access GPIO on your Pi OS. Some images
+require additional gpio device permissions or a different gpiozero backend.
+
+  sudo systemctl start porkchop
+  sudo systemctl status porkchop --no-pager
+  sudo journalctl -u porkchop -n 50 --no-pager
+
+Expected mapping:
+  Switch contacts CLOSED -> green LED ON  -> API OPEN -> BOYS R BUZZIN'
+  Switch contacts OPEN   -> green LED OFF -> API CLOSED -> BOYS AIN'T BUZZIN'
+
+Open the public viewer:
+  https://myporkchop-api.mipigithub.workers.dev/
+
+And read-only JSON:
+  https://myporkchop-api.mipigithub.workers.dev/api/public-status
+
+The Pi sends a status update on changes and about every 150 seconds.
+After more than 450 seconds without a heartbeat, the viewer should show
+SERVICE UNAVAILABLE / UNKNOWN. Cloudflare KV is eventually consistent.
+
+6. ENABLE STARTUP AFTER TESTS PASS
+
+  sudo systemctl enable porkchop
+  sudo systemctl restart porkchop
+  sudo systemctl status porkchop --no-pager
+
+Test a reboot only after verifying no conflict with existing MiPi services.
+
+7. MAINTENANCE
+From the source checkout:
+  sudo systemctl stop porkchop
+  git pull                      # if using a git checkout
+  sudo bash MiButcher.sh update
+  sudo systemctl start porkchop
+
+To replace the device token:
+  sudo bash MiButcher.sh token-update
+
+CAUTION: token-update currently DOES NOT validate the replacement token
+against Cloudflare before overwriting it. Keep a recovery plan for a
+mistyped token; verify connectivity afterward.
+
+To remove the optional application:
+  sudo bash MiButcher.sh uninstall
+
+Uninstall preserves /etc/miporkchop.env; remove it separately only when
+intentionally decommissioning credentials.
+
+8. TROUBLESHOOTING
+  sudo systemctl status porkchop --no-pager
+  sudo journalctl -u porkchop -n 100 --no-pager
+  /usr/bin/python3 -c "import gpiozero"
+  curl -fsS https://myporkchop-api.mipigithub.workers.dev/health
+
+Do not paste logs containing tokens. Health only proves the Worker responds,
+not that the Pi or KV data is current.
+
+TEST STATUS
+- Cloudflare viewer and manual API state posts: tested October 22, 2026.
+- GitHub Actions: latest runs reported green by user.
+- Pi GPIO, MiButcher installation, reboot, and recovery: NOT YET TESTED.
+
+October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare Worker must be redeployed after this GitHub change.
