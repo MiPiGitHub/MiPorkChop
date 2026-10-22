@@ -1,6 +1,6 @@
 # MiPorkChop — GarageMahal Buzzin' Tracker
 
-**Development branch:** `2026ReSmoked` · **Updated:** October 22, 2026 · **Status:** Cloudflare viewer deployed and manually exercised; Raspberry Pi hardware integration pending.
+**Baseline branch:** `main` · **Hardware testing branch:** `2026HardwareTesting` · **Updated:** October 22, 2026 · **Status:** Cloudflare viewer deployed and manually exercised; Raspberry Pi hardware integration pending.
 
 MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming visitors. It is **not** part of the standard MiPi build. The 2023 Google Forms prototype remains historical; the active implementation uses Cloudflare Workers and KV.
 
@@ -32,7 +32,7 @@ API state values are **uppercase and case-sensitive**. They represent **GarageMa
 
 ## Cloudflare configuration and URLs
 
-Current deployed Worker base URL: `https://myporkchop-api.mipigithub.workers.dev/`
+**Preferred public URL:** `https://porkchop.mipi.support/` (Cloudflare DNS and Worker custom domain; user-confirmed working).\n\n**Direct Worker fallback:** `https://miporkchop-api.mipigithub.workers.dev/` (use for troubleshooting if custom DNS or routing fails).
 
 - `GET /`: public mobile-friendly viewer; fetches status every 15 seconds and updates elapsed time locally.
 - `GET /health`: Worker readiness response.
@@ -46,7 +46,7 @@ Cloudflare requires KV binding `STATUS_KV` and Worker secret `DEVICE_API_TOKEN`;
 
 Prerequisite: standard MiPi image/build already completed, Python 3, `gpiozero`, working GPIO access and outbound HTTPS. The optional add-on is isolated under `/opt/miporkchop`, with root-owned credentials at `/etc/miporkchop.env` and systemd unit at `/etc/systemd/system/porkchop.service`.
 
-After checking out branch `2026ReSmoked` on the Pi:
+After checking out branch `2026HardwareTesting` on the Pi (or `main` for the merged baseline):
 
 ```bash
 sudo bash MiButcher.sh install
@@ -68,4 +68,4 @@ MiButcher commands: `install`, `update`, `token-update`, `uninstall`. Install pr
 
 **Future improvements:** validate token before replacement, add installer rollback, run CI checks, consolidate viewer source into a reproducible Cloudflare deployment, consider rate limiting and more robust status freshness handling. No incoming connections or port forwarding to the Raspberry Pi are needed.
 
-October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare Worker must be redeployed after this GitHub change.
+October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare GitHub Builds is connected to `main`; deployments are triggered by commits to `main`. Check Cloudflare Deployments for the active version.
