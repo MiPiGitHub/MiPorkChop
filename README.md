@@ -1,126 +1,69 @@
-# MiPorkChop — Garage Mahal Buzzin' Tracker
+# MiPorkChop — GarageMahal Buzzin' Tracker
 
-> **Project status:** 2026 redesign / experimental hobby project  
-> **Development branch:** `2026ReSmoked`  
-> **Future full-featured release nickname:** Hog Wild  
-> **Design baseline:** October 21, 2026
+**Development branch:** `2026ReSmoked` · **Updated:** October 22, 2026 · **Status:** Cloudflare viewer deployed and manually exercised; Raspberry Pi hardware integration pending.
 
-## What is MiPorkChop?
+MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming visitors. It is **not** part of the standard MiPi build. The 2023 Google Forms prototype remains historical; the active implementation uses Cloudflare Workers and KV.
 
-MiPorkChop is a lighthearted, no-charge Raspberry Pi side project for the **Garage Mahal**, a detached garage where friends and community members gather for television, games, darts, and conversation. The garage's host, David Lee, is nicknamed **Pork Chop** by his brothers. When the garage is open for visitors, the familiar message is **“Boys are buzzin'!”**
-
-The goal is to let invited friends check whether the Garage Mahal is open, without requiring David to send individual status texts every time. It is also a learning lab for Raspberry Pi GPIO, Python, GitHub workflows, cloud APIs, web development, and eventually native mobile apps.
-
-This is **not** a MiPi commercial product, supported service, or paid offering. Keep it inexpensive, approachable, and fun.
-
-## Guiding principles
-
-- **Today's design supersedes the 2023 prototype.** Preserve the old work as history, not as the implementation specification.
-- **Start simple:** one physical toggle switch, one local green LED, and a basic open/closed status.
-- **Free or nearly free:** reuse existing Raspberry Pi hardware and favor services with suitable free tiers; verify limits before choosing a provider.
-- **No inbound home-network access:** the Pi initiates outbound HTTPS requests over David's Wi-Fi; no port forwarding required.
-- **Privacy first:** the status reveals activity at a private residence. Avoid public discovery; share access intentionally, with lightweight access control as needed.
-- **Reliable status:** distinguish an actual CLOSED state from UNKNOWN when the device has stopped checking in.
-- **Learn by building:** use branches, commits, pull requests, and documented design decisions.
-
-## Proposed architecture (not yet implemented)
+## Architecture
 
 ```text
-Garage Mahal                                      Cloud
-────────────                                      ─────
-Physical SPST toggle switch
-        │
-        ▼
-Raspberry Pi GPIO input (candidate: BCM 17)
-        │
-        ├──► Green LED on separate GPIO output
-        │     (local switch-state indication)
-        │
-        ▼
-Python service: debounce, change detection,
-retry, logging, periodic heartbeat
-        │
-        └──────── outbound HTTPS ──────────────► Status API
-                                                    │
-                                                    ▼
-                                               Persistent state
-                                                    │
-                                                    ▼
-                                              Mobile-friendly web
-                                              status dashboard
-                                                    │
-                                                    └──► Future admin
-                                                         override for Dave
+SPST switch (GPIO17) ──► Raspberry Pi: src/porkchop.py ── HTTPS POST /api/status ──► Cloudflare Worker: src/worker.js
+                              │                                                        │
+                              └──► Green LED (GPIO27)                            STATUS_KV storage
+                                                                                       │
+                                                           public browser viewer ◄── GET /api/public-status
 ```
 
-### Hardware — version 0.1
+- **MiButcher.sh:** Optional Raspberry Pi installer/maintenance command. Does not run continuously.
+- **systemd/porkchop.service:** Linux service definition; runs `/opt/miporkchop/porkchop.py`.
+- **src/porkchop.py:** Reads GPIO, drives LED, reports changes and sends a heartbeat approximately every 60 seconds.
+- **src/worker.js:** Runs at Cloudflare, accepts authenticated device writes, stores state in KV, and serves the public viewer and status API.
+- **src/viewer.html:** Readable source for the public UI; a copy is embedded in `worker.js` for direct Cloudflare dashboard deployment. **If the viewer changes, update both copies.**
 
-- Reuse an available Raspberry Pi; the 2023 prototype contemplated a Raspberry Pi 4B (2 GB).
-- A maintained **single-pole, single-throw (SPST)** toggle switch connected to a GPIO input and ground, using a properly configured internal pull-up.
-- Candidate input: **BCM GPIO 17**, inherited from the 2023 prototype; confirm actual wiring before implementation.
-- One **green LED**, driven from a separate GPIO output through an appropriate current-limiting resistor. LED ON means the Pi detects the local switch in the “buzzin'” position; OFF means it does not.
-- Never connect mains/garage-light voltage directly to GPIO. Automated light/relay sensing is only a possible later enhancement.
-- Define the switch polarity, boot behavior, safe wiring, and power-loss behavior during implementation.
+## Definitive state mapping
 
-### Software and cloud — version 0.2
+| Physical GPIO17 switch contacts | GarageMahal state sent to API | Local green LED | Public viewer |
+|---|---|---|---|
+| CLOSED (grounded; `Button.is_pressed`) | `OPEN` | ON | 🟢 BOYS R BUZZIN' |
+| OPEN (internal pull-up) | `CLOSED` | OFF | 🔴 BOYS AIN'T BUZZIN' |
+| No fresh heartbeat for over 180 seconds | `UNKNOWN` (computed by Worker) | Not remotely verifiable | ⚪ SERVICE UNAVAILABLE |
 
-- A small Python process reads the GPIO input, handles switch bounce, and sends a status update when the state changes.
-- A periodic heartbeat lets the cloud know the Pi is alive even if the switch has not moved.
-- Retry transient network failures without losing the latest desired state.
-- Use authenticated outbound HTTPS to a lightweight endpoint. **Cloudflare Workers plus a persistent store is a candidate, not a finalized provider decision.**
-- Keep credentials out of GitHub; use environment variables or another suitable secret-management mechanism.
-- Store at least: physical switch state, effective public state, last state-change time, last successful heartbeat, and source of the effective state.
-- A stale heartbeat should cause the dashboard to show **UNKNOWN / status unavailable**, not falsely assert OPEN or CLOSED.
+API state values are **uppercase and case-sensitive**. They represent **GarageMahal availability**, not electrical contact position.
 
-### Web dashboard — version 0.3
+## Cloudflare configuration and URLs
 
-A mobile-friendly webpage for invited friends, initially showing:
+Current deployed Worker base URL: `https://myporkchop-api.mipigithub.workers.dev/`
 
-- **GREEN — Boys are buzzin'!** Garage Mahal open.
-- **RED — Not buzzin'.** Garage Mahal closed.
-- **UNKNOWN — Status unavailable.** Pi/cloud status too old to trust.
+- `GET /`: public mobile-friendly viewer; fetches status every 15 seconds and updates elapsed time locally.
+- `GET /health`: Worker readiness response.
+- `GET /api/public-status`: public, read-only JSON status; stale data returns `UNKNOWN` with `lastSeen`.
+- `GET /api/status`: authenticated read with `VIEWER_API_TOKEN` (retained for administrative use).
+- `POST /api/status`: authenticated device update with `DEVICE_API_TOKEN`; JSON body `{"state":"OPEN"}` or `{"state":"CLOSED"}`.
 
-Yellow/amber for **Buzzin' Soon** or **Last Call** is a later enhancement. The first dashboard need not be a downloadable phone app.
+Cloudflare requires KV binding `STATUS_KV` and Worker secret `DEVICE_API_TOKEN`; the authenticated GET additionally uses `VIEWER_API_TOKEN`. **Never commit token values to GitHub or embed them in public HTML.** Public viewing is intentional; no login required. KV is eventually consistent.
 
-The host (David) should eventually have an authenticated administrative view to override the public status. **Keep the physical switch state separate from the effective public status**, so the next Pi heartbeat does not erase an intentional override. Override precedence, expiration, and clearing behavior remain design decisions.
+## Raspberry Pi installation (hardware test pending)
 
-### Future enhancements — version 0.4 / Hog Wild
+Prerequisite: standard MiPi image/build already completed, Python 3, `gpiozero`, working GPIO access and outbound HTTPS. The optional add-on is isolated under `/opt/miporkchop`, with root-owned credentials at `/etc/miporkchop.env` and systemd unit at `/etc/systemd/system/porkchop.service`.
 
-- Yellow **Closing Soon / Last Call** state; the 2023 concept proposed a 30-minute period after switching off.
-- Historical statistics, such as hours since the last buzzin', opening frequency, and session duration.
-- Optional, opt-in notifications that respect David's practice of inviting people individually without peer pressure.
-- Possible progressive web app (PWA) and eventually a **native smartphone app** as a learning milestone. Evaluate app-store requirements and costs later.
-- Optional garage-light or relay-based sensing, only with appropriate electrical isolation.
+After checking out branch `2026ReSmoked` on the Pi:
 
-## Development roadmap
+```bash
+sudo bash MiButcher.sh install
+sudo systemctl status porkchop
+# Only after wiring, configuration, and safety checks:
+sudo systemctl enable --now porkchop
+sudo journalctl -u porkchop -f
+```
 
-| Milestone | Goal | Status |
-| --- | --- | --- |
-| 0.1 — The Switch | GPIO toggle, green LED, local Python status/logging | Planned |
-| 0.2 — The Cloud | Authenticated outbound updates, persistent state, heartbeat | Planned |
-| 0.3 — Garage Mahal Dashboard | Mobile web status, then host admin controls | Planned |
-| 0.4 — The Extras | Closing soon, history, optional notifications | Planned |
-| 1.0 — Hog Wild | Full-featured native smartphone app | Future aspiration |
+MiButcher commands: `install`, `update`, `token-update`, `uninstall`. Install prompts for Worker URL and device token if not already configured, then leaves service disabled and stopped. Update requires stopping an active service first. Uninstall preserves credentials.
 
-## Open decisions
+**Current limitations:** MiButcher's token-update does not yet validate a replacement token or roll back on failure. GPIO service-user permissions and Python dependency availability must be verified on the actual Pi. Software tests and deployment pipeline status have not yet been independently confirmed. Do not assume unattended production readiness.
 
-1. Which cloud endpoint/database and hosting option meet the low-cost goal?
-2. How will invited friends access the dashboard without making the garage status broadly public?
-3. What heartbeat interval and stale-status threshold should we use?
-4. How should admin overrides expire or be cleared, especially after a physical switch change?
-5. Should the initial OFF transition immediately mean CLOSED, or should a 30-minute Last Call state be introduced later?
-6. What specific Raspberry Pi, switch, LED, enclosure, and power supply will be used?
+## Test record and next steps
 
-## Legacy project (2023)
+**Manually observed October 22, 2026:** Cloudflare viewer loads; public status endpoint returned `UNKNOWN` / stale heartbeat; authenticated curl posts of `OPEN` displayed green and `CLOSED` displayed red. This confirms the cloud/viewer state convention, **not** the physical GPIO behavior.
 
-The original prototype and its README are preserved in [`Legacy/2023/`](Legacy/2023/). It explored a Raspberry Pi 4B, BCM GPIO 17, Python polling, Google Forms as a status relay, and an HTML/JavaScript indicator with a possible yellow closing-soon state.
+**Tomorrow's Pi test:** verify correct physical wiring and LED resistor; install MiButcher; check service account/GPIO permissions; close switch → LED ON / API `OPEN` / green viewer; open switch → LED OFF / API `CLOSED` / red viewer; reboot; terminate service; disconnect network; wait >3 minutes and confirm `UNKNOWN`; verify service logs and token secrecy.
 
-That prototype is **historical reference only**. Its Google Forms approach is not the planned live architecture, and the old scripts are not assumed production-ready.
-
-## Repository workflow
-
-Work on `2026ReSmoked` while leaving `main` untouched until the redesign is reviewed. Make small commits, review the differences in a pull request, and merge when ready. Preserve the original code in `Legacy/2023/` rather than deleting it.
-
----
-
-**MiPorkChop: Is Pork Chop buzzin', or isn't he?**
+**Future improvements:** validate token before replacement, add installer rollback, run CI checks, consolidate viewer source into a reproducible Cloudflare deployment, consider rate limiting and more robust status freshness handling. No incoming connections or port forwarding to the Raspberry Pi are needed.
