@@ -1,111 +1,74 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP=/opt/miporkchop
-ENV=/etc/miporkchop.env
-SERVICE=/etc/systemd/system/porkchop.service
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[[ "$EUID" == 0 ]] || { echo "Run with sudo"; exit 1; }
+APP=/opt/miporkchop
+ENVFILE=/etc/miporkchop.env
+SERVICE=/etc/systemd/system/porkchop.service
+[[ "$EUID" -eq 0 ]] || { echo "Run with sudo"; exit 1; }
 usage(){ echo "Usage: sudo bash MiButcher.sh {install|update|token-update|uninstall}"; }
-put_token(){
+write_config(){
   [[ -t 0 ]] || { echo "Interactive terminal required"; exit 1; }
-  local token tmp
+  local url token tmp
+  read -r -p "Cloudflare Worker HTTPS base URL: " url
+  [[ "$url" =~ ^https://[a-zA-Z0-9.-]+(:[0-9]+)?/?$ ]] || { echo "Invalid Worker HTTPS URL"; exit 1; }
   read -r -s -p "Device API token: " token; echo
-  [[ -n "$token" && "$token" != *"'"* && "$token" != *$'\n'* ]] || { echo "Invalid token"; exit 1; }
+  [[ -n "$token" && "$token" != *"'"* && "$token" != *$'\n'* && "$token" != *$'\r'* ]] || { echo "Invalid token"; exit 1; }
   tmp="$(mktemp /etc/.miporkchop.XXXXXX)"
   chmod 600 "$tmp"
-  [[ ! -f "$ENV" ]] || grep -v '^DEVICE_API_TOKEN=' "$ENV" > "$tmp" || true
-  printf "DEVICE_API_TOKEN='%s'\n" "$token" >> "$tmp"
-  chown root:root "$tmp"; mv "$tmp" "$ENV"
+  printf "WORKER_URL='%s'\nDEVICE_API_TOKEN='%s'\n" "$url" "$token" > "$tmp"
+  chown root:root "$tmp"
+  mv "$tmp" "$ENVFILE"
   unset token
 }
-put_url(){
+replace_token(){
+  [[ -f "$ENVFILE" ]] || { echo "Install first"; exit 1; }
   [[ -t 0 ]] || { echo "Interactive terminal required"; exit 1; }
-  local url tmp
-  read -r -p "Cloudflare Worker HTTPS base URL: " url
-  [[ "$url" == https://* && "$url" != *"'"* && "$url" != *
-  [[ -f "$ROOT/src/porkchop.py" && -f "$ROOT/systemd/porkchop.service" ]] || { echo "Missing source files"; exit 1; }
-  id miporkchop &>/dev/null || useradd --system --home-dir "$APP" --shell /usr/sbin/nologin miporkchop
-  getent group gpio >/dev/null && usermod -aG gpio miporkchop || true
-  install -d -m 755 "$APP"
-  install -m 644 "$ROOT/src/porkchop.py" "$APP/porkchop.py"
-  install -m 644 "$ROOT/systemd/porkchop.service" "$SERVICE"
-  python3 -m py_compile "$APP/porkchop.py"\n  python3 -c "import gpiozero" || echo "WARNING: gpiozero dependency missing; install it before starting."
-  systemctl daemon-reload
-}
-case "${1:-}" in
- install)
-   install_files
-   if [[ ! -f "$ENV" ]]; then
-     echo "Cloudflare token is optional until Python cloud reporting is implemented."
-     read -r -p "Configure device token now? [y/N] " ans
-     [[ "$ans" == [yY] ]] && put_token || true
-   fi
-   systemctl disable porkchop.service >/dev/null 2>&1 || true
-   echo "Installed but not started. Check GPIO permissions and Python gpiozero dependency."
-   ;;
- update)
-   systemctl is-active --quiet porkchop.service && { echo "Stop service before update"; exit 1; }
-   install_files
-   echo "Updated; credentials preserved."
-   ;;
- token-update)
-   echo "Warning: token is not validated remotely by this prototype."
-   put_token
-   if systemctl is-active --quiet porkchop.service; then systemctl restart porkchop.service; fi
-   ;;
- uninstall)
-   systemctl disable --now porkchop.service >/dev/null 2>&1 || true
-   rm -f "$SERVICE"
-   systemctl daemon-reload
-   rm -rf "$APP"
-   echo "Uninstalled. Credentials preserved at $ENV."
-   ;;
- *) usage; exit 2 ;;
-esac
-\\n'* ]] || { echo "Invalid HTTPS URL"; exit 1; }
+  local token tmp
+  read -r -s -p "New device API token: " token; echo
+  [[ -n "$token" && "$token" != *"'"* && "$token" != *$'\n'* && "$token" != *$'\r'* ]] || { echo "Invalid token"; exit 1; }
   tmp="$(mktemp /etc/.miporkchop.XXXXXX)"
   chmod 600 "$tmp"
-  [[ ! -f "$ENV" ]] || grep -v '^WORKER_URL=' "$ENV" > "$tmp" || true
-  printf "WORKER_URL='%s'\\n" "$url" >> "$tmp"
-  chown root:root "$tmp"; mv "$tmp" "$ENV"
+  grep -v '^DEVICE_API_TOKEN=' "$ENVFILE" > "$tmp" || true
+  printf "DEVICE_API_TOKEN='%s'\n" "$token" >> "$tmp"
+  chown root:root "$tmp"
+  mv "$tmp" "$ENVFILE"
+  unset token
 }
 install_files(){
-  [[ -f "$ROOT/src/porkchop.py" && -f "$ROOT/systemd/porkchop.service" ]] || { echo "Missing source files"; exit 1; }
+  [[ -f "$ROOT/src/porkchop.py" && -f "$ROOT/systemd/porkchop.service" ]] || { echo "Source files missing"; exit 1; }
+  python3 -c 'import gpiozero' || { echo "gpiozero missing; install Python GPIO dependency before continuing"; exit 1; }
+  python3 -m py_compile "$ROOT/src/porkchop.py"
   id miporkchop &>/dev/null || useradd --system --home-dir "$APP" --shell /usr/sbin/nologin miporkchop
-  getent group gpio >/dev/null && usermod -aG gpio miporkchop || true
-  install -d -m 755 "$APP"
-  install -m 644 "$ROOT/src/porkchop.py" "$APP/porkchop.py"
-  install -m 644 "$ROOT/systemd/porkchop.service" "$SERVICE"
-  python3 -m py_compile "$APP/porkchop.py"
+  if getent group gpio >/dev/null; then usermod -aG gpio miporkchop; fi
+  install -d -o root -g root -m 755 "$APP"
+  install -o root -g root -m 644 "$ROOT/src/porkchop.py" "$APP/porkchop.py"
+  install -o root -g root -m 644 "$ROOT/systemd/porkchop.service" "$SERVICE"
   systemctl daemon-reload
 }
 case "${1:-}" in
- install)
-   install_files
-   if [[ ! -f "$ENV" ]]; then
-     echo "Cloudflare token is optional until Python cloud reporting is implemented."
-     read -r -p "Configure device token now? [y/N] " ans
-     [[ "$ans" == [yY] ]] && put_token || true
-   fi
-   systemctl disable porkchop.service >/dev/null 2>&1 || true
-   echo "Installed but not started. Check GPIO permissions and Python gpiozero dependency."
-   ;;
- update)
-   systemctl is-active --quiet porkchop.service && { echo "Stop service before update"; exit 1; }
-   install_files
-   echo "Updated; credentials preserved."
-   ;;
- token-update)
-   echo "Warning: token is not validated remotely by this prototype."
-   put_token
-   if systemctl is-active --quiet porkchop.service; then systemctl restart porkchop.service; fi
-   ;;
- uninstall)
-   systemctl disable --now porkchop.service >/dev/null 2>&1 || true
-   rm -f "$SERVICE"
-   systemctl daemon-reload
-   rm -rf "$APP"
-   echo "Uninstalled. Credentials preserved at $ENV."
-   ;;
- *) usage; exit 2 ;;
+  install)
+    [[ -f "$ENVFILE" ]] || write_config
+    install_files
+    systemctl disable porkchop.service >/dev/null 2>&1 || true
+    echo "Installed; service not started or enabled."
+    ;;
+  update)
+    [[ -f "$ENVFILE" ]] || { echo "Install first"; exit 1; }
+    if systemctl is-active --quiet porkchop.service; then echo "Stop service before update"; exit 1; fi
+    install_files
+    echo "Updated; credentials preserved."
+    ;;
+  token-update)
+    echo "Warning: token validation against Cloudflare is not yet implemented."
+    replace_token
+    if systemctl is-active --quiet porkchop.service; then systemctl restart porkchop.service; fi
+    ;;
+  uninstall)
+    systemctl disable --now porkchop.service >/dev/null 2>&1 || true
+    rm -f "$SERVICE"
+    systemctl daemon-reload
+    rm -rf "$APP"
+    echo "Uninstalled; credentials preserved at $ENVFILE."
+    ;;
+  *) usage; exit 2 ;;
 esac
