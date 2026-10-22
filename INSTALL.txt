@@ -88,8 +88,8 @@ Open the public viewer:
 And read-only JSON:
   https://myporkchop-api.mipigithub.workers.dev/api/public-status
 
-The Pi sends a status update on changes and about every 60 seconds.
-After more than 180 seconds without a heartbeat, the viewer should show
+The Pi sends a status update on changes and about every 150 seconds.
+After more than 450 seconds without a heartbeat, the viewer should show
 SERVICE UNAVAILABLE / UNKNOWN. Cloudflare KV is eventually consistent.
 
 6. ENABLE STARTUP AFTER TESTS PASS
@@ -133,3 +133,5 @@ TEST STATUS
 - Cloudflare viewer and manual API state posts: tested October 22, 2026.
 - GitHub Actions: latest runs reported green by user.
 - Pi GPIO, MiButcher installation, reboot, and recovery: NOT YET TESTED.
+
+October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare Worker must be redeployed after this GitHub change.
