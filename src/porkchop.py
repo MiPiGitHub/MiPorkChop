@@ -1,68 +1,76 @@
 #!/usr/bin/env python3
-"""MiPorkChop 0.1: local guarded switch and status LED.
-
-Hardware: Raspberry Pi 4B
-- Maintained SPST switch: BCM GPIO17 (physical pin 11) to GND (pin 9).
-- Green LED: BCM GPIO27 (physical pin 13) through a 330-ohm resistor
-  to LED anode (+); LED cathode (-) to GND (physical pin 14).
-- Switch CLOSED = BUZZIN'; switch OPEN = NOT BUZZIN'.
-- No external voltage is connected to GPIO pins.
-
-No cloud access, credentials, or network connectivity are required.
-"""
-
+"""MiPorkChop 0.3: GPIO switch, LED, and Cloudflare status heartbeat."""
+import json
 import logging
+import os
 import signal
 import threading
-
+import time
+import urllib.error
+import urllib.request
 from gpiozero import Button, LED
 
 SWITCH_GPIO = 17
 LED_GPIO = 27
-BOUNCE_SECONDS = 0.05
-
+HEARTBEAT_SECONDS = 60
 logger = logging.getLogger("miporkchop")
 
-
-def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+def post_status(url, token, state):
+    data = json.dumps({"state": state}).encode("utf-8")
+    request = urllib.request.Request(
+        url.rstrip("/") + "/api/status", data=data,
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        method="POST",
     )
-    stop_event = threading.Event()
+    with urllib.request.urlopen(request, timeout=10) as response:
+        result = json.load(response)
+        if not result.get("ok") or result.get("state") != state:
+            raise ValueError("Unexpected Worker response")
+    return result
 
-    def request_stop(signum: int, _frame: object) -> None:
-        logger.info("Received signal %s; shutting down", signum)
-        stop_event.set()
-
-    signal.signal(signal.SIGTERM, request_stop)
-    signal.signal(signal.SIGINT, request_stop)
-
-    # pull_up=True: open switch reads HIGH; closed-to-ground reads LOW.
-    # Button.is_pressed is True when the contact closes to ground.
-    with Button(SWITCH_GPIO, pull_up=True, bounce_time=BOUNCE_SECONDS) as switch:
-        with LED(LED_GPIO, initial_value=False) as status_led:
-
-            def apply_switch_state() -> None:
-                buzzin = switch.is_pressed
-                if buzzin:
-                    status_led.on()
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    worker_url = os.environ.get("WORKER_URL", "").strip()
+    token = os.environ.get("DEVICE_API_TOKEN", "").strip()
+    if not worker_url.startswith("https://") or not token:
+        raise SystemExit("WORKER_URL (https) and DEVICE_API_TOKEN are required")
+    stop = threading.Event()
+    changed = threading.Event()
+    def shutdown(signum, frame):
+        stop.set()
+        changed.set()
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    with Button(SWITCH_GPIO, pull_up=True, bounce_time=0.05) as switch:
+        with LED(LED_GPIO, initial_value=False) as led:
+            def changed_callback():
+                changed.set()
+            switch.when_pressed = changed_callback
+            switch.when_released = changed_callback
+            changed.set()
+            last_sent = None
+            next_attempt = 0
+            while not stop.is_set():
+                state = "CLOSED" if switch.is_pressed else "OPEN"
+                if state == "CLOSED":
+                    led.on()
                 else:
-                    status_led.off()
-                logger.info(
-                    "Physical switch: %s | Green LED: %s",
-                    "CLOSED / BOYS ARE BUZZIN'" if buzzin else "OPEN / NOT BUZZIN'",
-                    "ON" if buzzin else "OFF",
-                )
-
-            switch.when_pressed = apply_switch_state
-            switch.when_released = apply_switch_state
-            apply_switch_state()  # Restore the physical state after boot.
-            logger.info("MiPorkChop 0.1 ready. Press Ctrl+C to stop.")
-            stop_event.wait()
-
-    logger.info("MiPorkChop stopped; LED released.")
-
+                    led.off()
+                now = time.monotonic()
+                if (changed.is_set() or last_sent is None or now >= next_attempt):
+                    changed.clear()
+                    try:
+                        post_status(worker_url, token, state)
+                        logger.info("Reported switch state %s", state)
+                        last_sent = state
+                        next_attempt = time.monotonic() + HEARTBEAT_SECONDS
+                    except (urllib.error.URLError, ValueError, TimeoutError, OSError) as exc:
+                        logger.warning("Status delivery failed (%s); retrying", type(exc).__name__)
+                        next_attempt = time.monotonic() + 10
+                # Wake for switch changes, retry, or heartbeat; GPIO callbacks never block on network.
+                changed.wait(timeout=min(1, max(0, next_attempt - time.monotonic())))
+            led.off()
+    logger.info("Stopped and released GPIO")
 
 if __name__ == "__main__":
     main()
