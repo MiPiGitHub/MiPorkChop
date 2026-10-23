@@ -1,6 +1,6 @@
 # MiPorkChop — GarageMahal Buzzin' Tracker
 
-**Baseline branch:** `main` · **Hardware testing branch:** `2026HardwareTesting` · **Updated:** October 22, 2026 · **Status:** Cloudflare viewer deployed and manually exercised; Raspberry Pi hardware integration pending.
+**Baseline branch:** `main` · **Hardware testing branch:** `2026HardwareTesting` · **Updated:** October 23, 2026 · **Status:** Software and service are working, as confirmed by Matt. Final enclosure assembly and mounting remain.
 
 MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming visitors. It is **not** part of the standard MiPi build. The 2023 Google Forms prototype remains historical; the active implementation uses Cloudflare Workers and KV.
 
@@ -32,7 +32,9 @@ API state values are **uppercase and case-sensitive**. They represent **GarageMa
 
 ## Cloudflare configuration and URLs
 
-**Preferred public URL:** `https://porkchop.mipi.support/` (Cloudflare DNS and Worker custom domain; user-confirmed working).\n\n**Direct Worker fallback:** `https://miporkchop-api.mipigithub.workers.dev/` (use for troubleshooting if custom DNS or routing fails).
+**Preferred public URL:** `https://porkchop.mipi.support/` (Cloudflare DNS and Worker custom domain; user-confirmed working).
+
+**Direct Worker fallback:** `https://miporkchop-api.mipigithub.workers.dev/` (use for troubleshooting if custom DNS or routing fails).
 
 - `GET /`: public mobile-friendly viewer; fetches status every 15 seconds and updates elapsed time locally.
 - `GET /health`: Worker readiness response.
@@ -42,7 +44,7 @@ API state values are **uppercase and case-sensitive**. They represent **GarageMa
 
 Cloudflare requires KV binding `STATUS_KV` and Worker secret `DEVICE_API_TOKEN`; the authenticated GET additionally uses `VIEWER_API_TOKEN`. **Never commit token values to GitHub or embed them in public HTML.** Public viewing is intentional; no login required. KV is eventually consistent.
 
-## Raspberry Pi installation (hardware test pending)
+## Raspberry Pi installation
 
 Prerequisite: standard MiPi image/build already completed, Python 3, `gpiozero`, working GPIO access and outbound HTTPS. The optional add-on is isolated under `/opt/miporkchop`, with root-owned credentials at `/etc/miporkchop.env` and systemd unit at `/etc/systemd/system/porkchop.service`.
 
@@ -58,14 +60,17 @@ sudo journalctl -u porkchop -f
 
 MiButcher commands: `install`, `update`, `token-update`, `uninstall`. Install prompts for Worker URL and device token if not already configured, then leaves service disabled and stopped. Update requires stopping an active service first. Uninstall preserves credentials.
 
-**Current limitations:** MiButcher's token-update does not yet validate a replacement token or roll back on failure. GPIO service-user permissions and Python dependency availability must be verified on the actual Pi. Software tests and deployment pipeline status have not yet been independently confirmed. Do not assume unattended production readiness.
+For installation, service start/stop, automatic startup, and fetching updates from `main`, see [Pi Installation and Operations](docs/Pi-Installation-and-Operations.md).
 
-## Test record and next steps
+## Current status and next steps
 
-**Manually observed October 22, 2026:** Cloudflare viewer loads; public status endpoint returned `UNKNOWN` / stale heartbeat; authenticated curl posts of `OPEN` displayed green and `CLOSED` displayed red. This confirms the cloud/viewer state convention, **not** the physical GPIO behavior.
+Matt confirmed the software is working, including the public viewer, QR check-in/check-out, On my way, and Dave's PIN-protected message board.
 
-**Tomorrow's Pi test:** verify correct physical wiring and LED resistor; install MiButcher; check service account/GPIO permissions; close switch → LED ON / API `OPEN` / green viewer; open switch → LED OFF / API `CLOSED` / red viewer; reboot; terminate service; disconnect network; wait >7.5 minutes and confirm `UNKNOWN`; verify service logs and token secrecy.
+The remaining deployment steps are:
 
-**Future improvements:** validate token before replacement, add installer rollback, run CI checks, consolidate viewer source into a reproducible Cloudflare deployment, consider rate limiting and more robust status freshness handling. No incoming connections or port forwarding to the Raspberry Pi are needed.
+- [ ] Install the switch and LED (with its current-limiting resistor) in the project box.
+- [ ] Mount the completed kit in the GarageMahal.
+
+Additional feature ideas are optional future enhancements, not requirements for completing this deployment.
 
 October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare GitHub Builds is connected to `main`; deployments are triggered by commits to `main`. Check Cloudflare Deployments for the active version.
