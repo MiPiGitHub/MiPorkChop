@@ -1,7 +1,8 @@
 # On my way and Dave’s message board
 
-These features are staged on `2026HardwareTesting`. They require a merge to
-`main` and a successful Cloudflare deployment. No Raspberry Pi update is needed.
+Release source: `main`, after merging `2026HardwareTesting`. A successful
+Cloudflare deployment is required before using the new features. No Raspberry Pi
+update is needed.
 
 ## On my way
 
@@ -61,3 +62,27 @@ node tests/coming-motd.test.mjs
 Use Node 24 or another supported version with `node:sqlite`. After deployment,
 confirm on a phone: inbound → arrived, cancel inbound, PIN login (including the
 leading zero), preset editing/save, public display, clear, and lock.
+
+## Next steps — release checklist
+
+- [ ] Merge the tested `2026HardwareTesting` changes into `main`.
+- [ ] In Cloudflare, open `miporkchop-api` and confirm the deployment for that
+  merge shows **Ready**. A merge alone does not confirm the live version.
+- [ ] Add the `MOTD_PIN` **Secret** with the PIN agreed with Matt (preserve its
+  leading zero). Do not put the value in these docs or GitHub. Confirm any
+  deployment caused by saving the secret completes successfully.
+- [ ] Open the HTTPS viewer on a phone and refresh. With the switch open for
+  visitors, test **On my way**, **Cancel on my way**, and **I'm here**.
+- [ ] Confirm arrival removes the inbound count and adds one checked-in buddy.
+  Leave a separate inbound browser untouched for 15 minutes and confirm expiry.
+- [ ] Open `/MOTD`, unlock, pick a preset, edit and save it. Verify the public
+  message while OPEN, then test Clear and Lock.
+- [ ] Scan both printable QR images from `images/` in the same phone browser.
+  Confirm check-in and checkout, and that repeated check-in does not duplicate it.
+- [ ] Confirm CLOSED hides attendance and shows the note to text Dave.
+- [ ] Finish the pending hardware checks: service starts after a Pi reboot,
+  attendance buttons hide during stale/unavailable status, and LED/resistor work
+  after installation.
+
+Software tests cover the new behavior locally. The unchecked items above are
+live-device/deployment checks; do not treat them as passed until observed.
