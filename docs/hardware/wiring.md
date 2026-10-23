@@ -54,6 +54,7 @@ Relevant rows of the physical 40-pin header:
     pin 11 GPIO17       [11] [12] pin 12
     pin 13 GPIO27       [13] [14] pin 14 GND
 ```
+Raspberi Pi 4B Pin Out: https://cdn.sparkfun.com/assets/learn_tutorials/1/5/9/5/GPIO.png
 
 ### Cable and connector notes
 
