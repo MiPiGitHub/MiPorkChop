@@ -10,7 +10,7 @@
 <style>*{box-sizing:border-box}.since{margin-top:.8rem;color:#e2e8f0}details{margin-top:1.5rem;color:#cbd5e1;font-size:.95rem}summary{cursor:pointer;padding:.6rem}details p{line-height:1.5}
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111827;color:white;text-align:center}main{width:min(90vw,500px);padding:2rem;border:1px solid #374151;border-radius:22px;background:#1f2937}h1{font-size:1.3rem;letter-spacing:.13em}.lamp{font-size:5rem;margin:1rem}.state{font-size:2rem;font-weight:900}.detail{font-size:1.2rem;margin-top:.6rem}.stamp{color:#cbd5e1;margin-top:1rem}.open .state{color:#4ade80}.closed .state{color:#f87171}.unknown .state{color:#d1d5db}
 </style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="since" id="since"></div><div class="stamp" id="stamp"></div>
-<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><section aria-label="Buddy check-in" style="margin-top:1.5rem">
+<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><p id="closed-note" hidden style="margin-top:1.5rem;line-height:1.5">But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.</p><section id="attendance-section" aria-label="Buddy check-in" style="margin-top:1.5rem">
 <p id="attendance-count">Loading check-ins…</p>
 <button id="attendance-button" type="button" hidden disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer">I'm here</button>
 <p id="attendance-note" aria-live="polite"></p>
@@ -31,6 +31,8 @@ function render(){
  const fresh=age!==null&&Number.isFinite(age)&&age<=450;
  const state=fresh?last.state:'UNKNOWN';
  const known=state==='OPEN'||state==='CLOSED';
+ document.getElementById('attendance-section').hidden=state==='CLOSED';
+ document.getElementById('closed-note').hidden=state!=='CLOSED';
  card.className=known?(state==='OPEN'?'open':'closed'):'unknown';
  lamp.textContent=state==='OPEN'?'🟢':state==='CLOSED'?'🔴':'⚪';
  title.textContent=state==='OPEN'?"BOYS R BUZZIN'":state==='CLOSED'?"BOYS AIN'T BUZZIN'":'SERVICE UNAVAILABLE';
