@@ -65,7 +65,7 @@ function renderAttendance(){
  count.textContent=attendance?(attendance.available?attendance.count+' '+(attendance.count===1?'buddy':'buddies')+' checked in':'Attendance unavailable'):'Check-ins unavailable';
  attendanceButton.textContent=checked?"I'm leaving":"I'm here";
  attendanceButton.disabled=attendanceBusy||!attendance||(!checked&&!attendance.canCheckIn);
- note.textContent=checked?'You are checked in until '+new Date(attendance.expiresAt).toLocaleTimeString():attendance?.canCheckIn?'Check in when you arrive.':'Check-in is available while the GarageMahal is open.';
+ note.textContent=checked?"You’re checked in.":attendance?.canCheckIn?'Check in when you arrive.':'Check-in is available while the GarageMahal is open.';
 }
 async function refreshAttendance(){
  if(attendanceBusy)return;
