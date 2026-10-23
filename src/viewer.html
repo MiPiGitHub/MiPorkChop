@@ -7,6 +7,13 @@
 <script>
 const card=document.getElementById('card'),lamp=document.getElementById('lamp'),title=document.getElementById('state'),detail=document.getElementById('detail'),stamp=document.getElementById('stamp');
 let last=null;
+function formatAge(age){
+ const seconds=age%60,minutes=Math.floor(age/60)%60,hours=Math.floor(age/3600)%24,days=Math.floor(age/86400);
+ if(days>0)return days+'d '+hours+'h '+minutes+'m '+seconds+'s';
+ if(age>=3600)return hours+'h '+minutes+'m '+seconds+'s';
+ if(age>=60)return minutes+'m '+seconds+'s';
+ return seconds+' seconds';
+}
 function render(){
  const age=last?.lastSeen?Math.max(0,Math.floor((Date.now()-Date.parse(last.lastSeen))/1000)):null;
  const fresh=age!==null&&Number.isFinite(age)&&age<=450;
@@ -16,7 +23,7 @@ function render(){
  lamp.textContent=state==='OPEN'?'🟢':state==='CLOSED'?'🔴':'⚪';
  title.textContent=state==='OPEN'?"BOYS R BUZZIN'":state==='CLOSED'?"BOYS AIN'T BUZZIN'":'SERVICE UNAVAILABLE';
  detail.textContent=known?(state==='OPEN'?'GarageMahal is OPEN':'GarageMahal is CLOSED'):'GarageMahal status is unknown';
- stamp.textContent=age===null?'No confirmed heartbeat':('Last confirmed '+(age<60?age+' seconds ago':Math.floor(age/60)+'m '+age%60+'s ago')+' • '+new Date(last.lastSeen).toLocaleString());
+ stamp.textContent=age===null?'No confirmed heartbeat':('Last confirmed '+(formatAge(age)+' ago')+' • '+new Date(last.lastSeen).toLocaleString());
 }
 async function refresh(){
  try{
