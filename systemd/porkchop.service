@@ -6,7 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=miporkchop
-WorkingDirectory=/opt/miporkchop
+RuntimeDirectory=miporkchop
+WorkingDirectory=/run/miporkchop
 EnvironmentFile=-/etc/miporkchop.env
 ExecStart=/usr/bin/python3 -u /opt/miporkchop/porkchop.py
 Restart=on-failure
