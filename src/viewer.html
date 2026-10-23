@@ -22,6 +22,28 @@
 <script>
 const card=document.getElementById('card'),lamp=document.getElementById('lamp'),title=document.getElementById('state'),detail=document.getElementById('detail'),stamp=document.getElementById('stamp');
 let last=null,motdMessage='';
+const closedMessages=[
+ 'But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.',
+ 'The boys ain’t buzzin’. A tragic waste of perfectly good garage. Text Dave about fixing that.',
+ 'GarageMahal is closed. Apparently Dave has responsibilities. Text him and question his priorities.',
+ 'No buzzin’ detected. Dave may be doing something productive. Text him before it gets out of hand.',
+ 'Closed for absolutely no good reason that we’re willing to accept. Text Dave and appeal the decision.',
+ 'The garage is quiet. Suspiciously quiet. Text Dave and demand an explanation.',
+ 'The boys ain’t buzzin’… yet. Text Dave. Be the bad influence you wish to see in the world.',
+ 'GarageMahal is currently operating at zero shenanigans per hour. Text Dave. These numbers are unacceptable.'
+];
+let closedMessageIndex=Math.floor(Math.random()*closedMessages.length),closedMessageSince=null;
+function renderClosedMessage(state){
+ const note=document.getElementById('closed-note');
+ note.hidden=state!=='CLOSED';
+ if(state!=='CLOSED'){closedMessageSince=null;return;}
+ const now=Date.now();
+ if(closedMessageSince===null)closedMessageSince=now;
+ const steps=Math.floor((now-closedMessageSince)/30000);
+ if(steps>0){closedMessageIndex=(closedMessageIndex+steps)%closedMessages.length;closedMessageSince+=steps*30000;}
+ const message=closedMessages[closedMessageIndex];
+ if(note.textContent!==message)note.textContent=message;
+}
 function formatAge(age){
  const seconds=age%60,minutes=Math.floor(age/60)%60,hours=Math.floor(age/3600)%24,days=Math.floor(age/86400);
  if(days>0)return days+'d '+hours+'h '+minutes+'m '+seconds+'s';
@@ -35,7 +57,7 @@ function render(){
  const state=fresh?last.state:'UNKNOWN';
  const known=state==='OPEN'||state==='CLOSED';
  document.getElementById('attendance-section').hidden=state==='CLOSED';
- document.getElementById('closed-note').hidden=state!=='CLOSED';
+ renderClosedMessage(state);
  const motd=document.getElementById('motd');
  motd.textContent=motdMessage;
  motd.hidden=state!=='OPEN'||!motdMessage;

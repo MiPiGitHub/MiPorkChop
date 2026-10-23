@@ -85,6 +85,22 @@ vm.runInContext("attendance.checkedIn=true;attendance.expiresAt=Date.now()+21600
 assert.equal(nodes['coming-button'].hidden,true);assert.equal(nodes['attendance-button'].textContent,"I'm leaving");
 vm.runInContext("last.state='CLOSED';render();renderAttendance();",context);
 assert.equal(nodes['attendance-section'].hidden,true);assert.equal(nodes.motd.hidden,true);
+// Closed messages rotate only after 30 seconds and wrap through every message.
+vm.runInContext('globalThis.clock=Date.now();Date.now=()=>clock;closedMessageIndex=0;closedMessageSince=null;render();',context);
+const firstClosedMessage=nodes['closed-note'].textContent;
+assert.equal(nodes['closed-note'].hidden,false);
+vm.runInContext('clock+=29999;render();',context);
+assert.equal(nodes['closed-note'].textContent,firstClosedMessage);
+vm.runInContext('clock+=1;render();',context);
+assert.notEqual(nodes['closed-note'].textContent,firstClosedMessage);
+vm.runInContext('clock+=30000*(closedMessages.length-1);render();',context);
+assert.equal(nodes['closed-note'].textContent,firstClosedMessage);
+vm.runInContext("last.state='UNKNOWN';render();renderAttendance();",context);
+assert.equal(nodes['closed-note'].hidden,true);
+vm.runInContext("last={state:'OPEN',lastSeen:new Date(Date.now()).toISOString()};render();",context);
+assert.equal(nodes['closed-note'].hidden,true);
+vm.runInContext("last.state='CLOSED';render();clock+=451000;render();",context);
+assert.equal(nodes['closed-note'].hidden,true);
 vm.runInContext("last.state='UNKNOWN';render();renderAttendance();",context);
 assert.equal(nodes['coming-button'].hidden,true);assert.equal(nodes['attendance-button'].hidden,true);
 console.log('PASS: inbound conversion/expiry/cancellation/closure; PIN/session/origin/rate limits; messages/save/clear/XSS text safety; viewer controls and editor syntax.');
