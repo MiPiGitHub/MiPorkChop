@@ -15,5 +15,21 @@
         "id": "25413d4200c04902b48399a8e354c901"
       }
     ]
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ATTENDANCE",
+        "class_name": "Attendance"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "attendance-v1",
+      "new_sqlite_classes": [
+        "Attendance"
+      ]
+    }
+  ]
 }

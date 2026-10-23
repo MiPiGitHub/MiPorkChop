@@ -19,7 +19,7 @@ def post_status(url, token, state):
     data = json.dumps({"state": state}).encode("utf-8")
     request = urllib.request.Request(
         url.rstrip("/") + "/api/status", data=data,
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json", "User-Agent": "MiPorkChop/0.3"},
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=10) as response:
