@@ -1,9 +1,9 @@
 name: MiPorkChop software checks
 on:
   push:
-    branches: [2026ReSmoked]
+    branches: [2026ReSmoked, 2026HardwareTesting, main]
   pull_request:
-    branches: [2026ReSmoked]
+    branches: [2026ReSmoked, 2026HardwareTesting, main]
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -12,6 +12,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Worker and browser behavior
+        run: |
+          node tests/attendance.test.mjs
+          node tests/qr-action.test.mjs
+          node tests/coming-motd.test.mjs
       - name: Python syntax
         run: python -m py_compile src/porkchop.py tests/test_porkchop.py
       - name: Shell syntax
