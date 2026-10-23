@@ -12,7 +12,7 @@
 </style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="since" id="since"></div><div class="stamp" id="stamp"></div>
 <details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><section aria-label="Buddy check-in" style="margin-top:1.5rem">
 <p id="attendance-count">Loading check-ins…</p>
-<button id="attendance-button" type="button" disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer">I'm here</button>
+<button id="attendance-button" type="button" hidden disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer">I'm here</button>
 <p id="attendance-note" aria-live="polite"></p>
 <small>Optional estimate, one check-in per browser. Automatically expires after 6 hours or when the GarageMahal closes. Uses a browser cookie; no GPS.</small>
 </section></main>
@@ -50,11 +50,16 @@ async function refresh(){
  }catch(e){last=null;}
  render();
 }
-refresh();setInterval(refresh,15000);setInterval(render,1000);
+refresh();setInterval(refresh,15000);setInterval(()=>{render();updateAttendanceVisibility();},1000);
 
 let attendance=null,attendanceBusy=false;
 const attendanceButton=document.getElementById('attendance-button');
+function updateAttendanceVisibility(){
+ const age=last?.lastSeen?(Date.now()-Date.parse(last.lastSeen))/1000:NaN;
+ attendanceButton.hidden=!(last?.state==='OPEN'&&Number.isFinite(age)&&age>=0&&age<=450&&attendance?.canCheckIn);
+}
 function renderAttendance(){
+ updateAttendanceVisibility();
  const count=document.getElementById('attendance-count'),note=document.getElementById('attendance-note');
  const checked=attendance?.checkedIn&&attendance.expiresAt>Date.now();
  count.textContent=attendance?(attendance.available?attendance.count+' '+(attendance.count===1?'buddy':'buddies')+' checked in':'Attendance unavailable'):'Check-ins unavailable';
