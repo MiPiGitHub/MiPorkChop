@@ -20,10 +20,10 @@ main{background:rgba(17,24,39,.91);box-shadow:0 16px 60px #0008;margin-top:clamp
 <details id="nickname-settings"><summary>Your optional nickname</summary>
 <form id="nickname-form"><label for="nickname">What do the boys call you?</label>
 <input id="nickname" maxlength="40" autocomplete="nickname" placeholder="Name or nickname" style="font:inherit;width:100%;padding:12px;margin:12px 0;border-radius:10px">
-<p style="font-size:.9rem">Optional. Your nickname is visible to anyone with the garage link while you’re checked in or on your way. Remembered in this browser for up to a year; clearing cookies or using another browser means entering it again.</p>
+<p style="font-size:.9rem">Leave your name blank and we’ll give this browser a King of the Hill alias marked “incognito.” Your nickname is visible to anyone with the garage link while you’re checked in or on your way. Remembered in this browser for up to a year; clearing cookies or using another browser means entering it again.</p>
 <button type="submit" style="font:inherit;min-height:44px">Save nickname</button>
 <button id="forget-nickname" type="button" style="font:inherit;min-height:44px">Forget me</button>
-<p id="nickname-feedback" role="status"></p></form></details>
+<p id="nickname-alias"></p><p id="nickname-feedback" role="status"></p></form></details>
 <section id="attendance-section"  aria-label="Buddy check-in" style="margin-top:1.5rem">
 <p id="attendance-count">Loading check-ins…</p>
 <p id="coming-count"></p>
@@ -104,6 +104,8 @@ function updateAttendanceVisibility(){
  comingButton.hidden=attendanceButton.hidden||!!(attendance?.checkedIn&&attendance.expiresAt>Date.now());
 }
 function renderAttendance(){
+ document.getElementById('nickname-alias').textContent=attendance&&!attendance.nickname?'Your garage alias: '+attendance.alias:'';
+
  if(attendance&&!nicknameDirty)document.getElementById('nickname').value=attendance.nickname??'';
 
  updateAttendanceVisibility();
@@ -161,7 +163,7 @@ async function saveNickname(name){
  if(attendanceBusy){document.getElementById('nickname-feedback').textContent='Please try again in a moment.';return;}
  const ok=await changeAttendance('nickname',{name});
  if(ok){nicknameDirty=false;renderAttendance();}
- document.getElementById('nickname-feedback').textContent=ok?(name.trim()?'Nickname saved. See you at the garage!':'Nickname forgotten. Your current attendance stays anonymous.'):'Could not save nickname. Please try again.';
+ document.getElementById('nickname-feedback').textContent=ok?(name.trim()?'Nickname saved. See you at the garage!':'Nickname forgotten. Your character alias is back.'):'Could not save nickname. Please try again.';
 }
 document.getElementById('nickname-form').addEventListener('submit',event=>{event.preventDefault();saveNickname(document.getElementById('nickname').value);});
 document.getElementById('forget-nickname').addEventListener('click',()=>saveNickname(''));

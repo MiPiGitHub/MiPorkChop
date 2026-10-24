@@ -1,9 +1,9 @@
 name: MiPorkChop software checks
 on:
   push:
-    branches: [2026ReSmoked, 2026HardwareTesting, main]
+    branches: [2026ReSmoked, 2026HardwareTesting, main, feature/king-of-the-hill-aliases]
   pull_request:
-    branches: [2026ReSmoked, 2026HardwareTesting, main]
+    branches: [2026ReSmoked, 2026HardwareTesting, main, feature/king-of-the-hill-aliases]
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -22,6 +22,7 @@ jobs:
           node tests/coming-motd.test.mjs
           node tests/manual-counts.test.mjs
           node tests/nicknames-whois.test.mjs
+          node tests/incognito-aliases.test.mjs
       - name: Python syntax
         run: python -m py_compile src/porkchop.py tests/test_porkchop.py
       - name: Shell syntax

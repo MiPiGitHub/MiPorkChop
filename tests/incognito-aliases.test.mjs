@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import vm from 'node:vm';
+import {Attendance,incognitoAlias} from '../src/attendance.js';
+import worker from '../src/worker.js';
+import {WHOIS_HTML} from '../src/whois-page.js';
+const db=new DatabaseSync(':memory:');
+const storage={sql:{exec(q,...args){return db.prepare(q).all(...args);}},transactionSync(fn){db.exec('BEGIN');try{const r=fn();db.exec('COMMIT');return r;}catch(e){db.exec('ROLLBACK');throw e;}}};
+const obj=new Attendance({storage},{MOTD_PIN:'0123'});
+const env={ATTENDANCE:{idFromName:n=>n,get:()=>obj}};
+const origin='https://porkchop.mipi.support';
+let now=Date.now();Date.now=()=>now;
+const a=crypto.randomUUID(),b=crypto.randomUUID();
+async function call(path,body,id=a){
+ const response=await obj.fetch(new Request('https://internal'+path,{method:body?'POST':'GET',headers:{'X-Visitor-ID':id},body:body?JSON.stringify(body):undefined}));
+ return {status:response.status,...await response.json()};
+}
+
+await call('/device',{state:'OPEN'});
+let mine=await call('/attendance');
+const alias=mine.alias;
+assert.match(alias,/ \(incognito\)$/);
+assert.equal(mine.nickname,'');
+assert.equal(alias,incognitoAlias(a));
+await call('/attendance',{action:'coming'});
+let roster=await call('/whois');
+assert.equal(roster.coming[0].name,alias);
+assert.equal(roster.coming[0].incognito,true);
+assert(!JSON.stringify(roster).includes(a));
+assert(!JSON.stringify(roster).includes('visitorId'));
+await call('/attendance',{action:'in'});
+roster=await call('/whois');
+assert.equal(roster.here[0].name,alias);assert.equal(roster.coming.length,0);
+await call('/attendance',{action:'nickname',name:'Sully'});
+assert.equal((await call('/whois')).here[0].name,'Sully');
+assert.equal((await call('/whois')).here[0].incognito,false);
+await call('/attendance',{action:'nickname',name:''});
+assert.equal((await call('/whois')).here[0].name,alias);
+await call('/device',{state:'CLOSED'});
+assert.equal((await call('/whois')).here.length,0);
+now+=21*24*3600000;
+await call('/device',{state:'OPEN'});
+await call('/attendance',{action:'in'});
+assert.equal((await call('/whois')).here[0].name,alias);
+db.prepare('INSERT INTO manual_counts VALUES (?,?,?)').run('checked',2,now+21600000);
+assert.equal((await call('/whois')).here.find(x=>!x.name).count,2);
+// Each browser remains a separate buddy even when the finite alias pool repeats.
+const ids=Array.from({length:25},()=>crypto.randomUUID());
+for(const id of ids)await call('/attendance',{action:'in'},id);
+roster=await call('/whois');
+assert.equal(roster.here.filter(x=>x.incognito).length,26);
+assert.equal((await call('/attendance')).count,28);
+now+=450001;
+assert.deepEqual((await call('/whois')).here,[]);
+console.log('PASS: stable aliases across weeks and arrival, nickname override/forget, no identity leak, manual counts, duplicate characters and stale suppression.');

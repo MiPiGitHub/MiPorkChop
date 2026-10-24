@@ -1,5 +1,12 @@
 // One shared Durable Object serializes attendance and device-state changes.
 import { Motd } from './motd.js';
+// Stable pseudonym from the existing random browser cookie. Never publish that ID.
+const CHARACTERS=['Hank Hill','Dale Gribble','Boomhauer','Bill Dauterive','Bobby Hill','Peggy Hill','Luanne Platter','Kahn Souphanousinphone','Minh Souphanousinphone','Connie Souphanousinphone','Nancy Gribble','John Redcorn','Buck Strickland','Cotton Hill','Joseph Gribble'];
+export function incognitoAlias(id){
+ let hash=2166136261;
+ for(const char of id)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ return CHARACTERS[hash%CHARACTERS.length]+' (incognito)';
+}
 const SIX_HOURS=6*60*60*1000;
 const FIFTEEN_MINUTES=15*60*1000;
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
@@ -17,7 +24,9 @@ export class Attendance {
   const state=garage&&now-garage.seen<=450000?garage.state:'UNKNOWN';
   const list=(table,kind)=>{
    if(state!=='OPEN')return [];
-   const rows=[...this.sql.exec("SELECT p.name AS name,v.expires AS expiresAt FROM "+table+" v LEFT JOIN profiles p ON p.id=v.id AND p.expires>? WHERE v.expires>? ORDER BY p.name COLLATE NOCASE",now,now)];
+   const visits=[...this.sql.exec("SELECT v.id AS visitorId,p.name AS name,v.expires AS expiresAt FROM "+table+" v LEFT JOIN profiles p ON p.id=v.id AND p.expires>? WHERE v.expires>? ORDER BY p.name COLLATE NOCASE",now,now)];
+   const rows=visits.map(({visitorId,name,expiresAt})=>({name:name||incognitoAlias(visitorId),incognito:!name,expiresAt}));
+   rows.sort((a,b)=>a.name.localeCompare(b.name));
    const manual=[...this.sql.exec("SELECT count,expires FROM manual_counts WHERE kind=? AND expires>?",kind,now)][0];
    if(manual?.count)rows.push({name:null,count:manual.count,expiresAt:manual.expires});
    return rows;
@@ -85,7 +94,7 @@ export class Attendance {
    }else if(request.method!=="GET")return reply({error:"Method not allowed"},405);
    const visit=[...this.sql.exec("SELECT expires FROM visits WHERE id=?",id)][0];
    const coming=[...this.sql.exec("SELECT expires FROM inbound WHERE id=?",id)][0];
-   return reply({...this.motd.counts(now),nickname:[...this.sql.exec("SELECT name FROM profiles WHERE id=?",id)][0]?.name??"",
+   return reply({...this.motd.counts(now),alias:incognitoAlias(id),nickname:[...this.sql.exec("SELECT name FROM profiles WHERE id=?",id)][0]?.name??"",
     onMyWay:!!coming,comingExpiresAt:coming?.expires??null,
     checkedIn:!!visit,expiresAt:visit?.expires??null,canCheckIn,available});
   });
