@@ -37,7 +37,7 @@ export default {
    if(url.protocol!=="https:"){url.protocol="https:";return Response.redirect(url.toString(),308);}
    return new Response(MOTD_HTML,{headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-robots-tag":"noindex, nofollow","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});
   }
-  if(path==="/api/motd"||path==="/api/motd/session"){
+  if(path==="/api/motd"||path==="/api/motd/session"||path==="/api/motd/counts"){
    if(url.protocol!=="https:")return json({error:"HTTPS required"},403);
    const allowed=path.endsWith('/session')?["GET","POST","DELETE"]:["GET","PUT"];
    if(!allowed.includes(request.method))return json({error:"Method not allowed"},405);
@@ -100,3 +100,4 @@ export default {
   return json({error:"Method not allowed"},405);
  }
 };
+
