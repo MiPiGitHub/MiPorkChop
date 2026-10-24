@@ -9,9 +9,20 @@ async function hash(value){
 export class Motd {
  constructor(ctx,env){
   this.ctx=ctx;this.env=env;this.sql=ctx.storage.sql;
+  this.sql.exec('CREATE TABLE IF NOT EXISTS manual_counts (kind TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS motd (id INTEGER PRIMARY KEY, message TEXT NOT NULL, updated INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS motd_sessions (token TEXT PRIMARY KEY, expires INTEGER NOT NULL, pin_hash TEXT NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS motd_attempts (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL)');
+ }
+ counts(now=Date.now()){
+  const actual=[...this.sql.exec('SELECT COUNT(*) AS count FROM visits WHERE expires>?',now)][0].count;
+  const inbound=[...this.sql.exec('SELECT COUNT(*) AS count FROM inbound WHERE expires>?',now)][0].count;
+  const rows=[...this.sql.exec('SELECT kind,count,expires FROM manual_counts WHERE expires>?',now)];
+  const manual=rows.find(r=>r.kind==='checked'),coming=rows.find(r=>r.kind==='coming');
+  const garage=[...this.sql.exec('SELECT state,seen FROM garage WHERE id=1')][0];
+  return {count:actual+(manual?.count??0),comingCount:inbound+(coming?.count??0),
+   browserCount:actual,browserComingCount:inbound,manualCount:manual?.count??0,manualComingCount:coming?.count??0,
+   canAdjust:garage?.state==='OPEN'&&now-garage.seen<=450000};
  }
  async fetch(request){
   const path=new URL(request.url).pathname,method=request.method;
@@ -60,6 +71,19 @@ export class Motd {
    }
    const session=[...this.sql.exec('SELECT pin_hash FROM motd_sessions WHERE token=?',tokenHash)][0];
    if(!session||session.pin_hash!==pinHash)return json({error:'Please enter your PIN'},401);
+   if(path==='/motd/counts'){
+    if(method==='GET')return json(this.counts(now));
+    if(method!=='PUT')return json({error:'Method not allowed'},405);
+    if(!['checked','coming'].includes(body.kind)||!Number.isInteger(body.count)||body.count<0||body.count>500)
+     return json({error:'Choose a whole number from 0 to 500'},400);
+    if(!this.counts(now).canAdjust)return json({error:'Adjustments require the garage to be open and online'},409);
+    const existing=[...this.sql.exec('SELECT count,expires FROM manual_counts WHERE kind=?',body.kind)][0];
+    // Saving the same value never extends its expiry.
+    if(!existing||existing.expires<=now||existing.count!==body.count){
+     this.sql.exec('INSERT OR REPLACE INTO manual_counts VALUES (?,?,?)',body.kind,body.count,now+(body.kind==='checked'?21600000:900000));
+    }
+    return json(this.counts(now));
+   }
    if(path==='/motd/session'&&method==='GET')return json({authenticated:true,...current()});
    if(path==='/motd'&&method==='PUT'){
     if(typeof body.message!=='string'||body.message.length>280)return json({error:'Message must be 280 characters or fewer'},400);
@@ -71,3 +95,4 @@ export class Motd {
   });
  }
 }
+
