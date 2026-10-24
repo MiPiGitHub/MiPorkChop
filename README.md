@@ -87,6 +87,8 @@ See [Nicknames and WHOIS](docs/Nicknames-and-WHOIS.md) and [On my way and MOTD](
 
 `main` is the deployed baseline; `2026HardwareTesting` holds the next changes. King of the Hill aliases are isolated on `feature/king-of-the-hill-aliases` and are **not live**. That experiment predates the prompt/automatic-host release and must be reconciled with current main before any future merge. Icons and Dave’s manual naming controls remain future ideas.
 
+- **Notification process (future idea only):** Explore optional notifications, such as when a garage opens. Delivery method, triggers, subscription preferences, and implementation are undecided. Recorded at Matt’s request; no notification system is being built or enabled yet.
+
 The remaining deployment steps are:
 
 - [ ] Install the switch and LED (with its current-limiting resistor) in the project box.
