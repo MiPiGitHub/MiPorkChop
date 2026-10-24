@@ -14,6 +14,7 @@ body{padding:24px 0;background:#111827 url('/porkchop-backdrop-v1.webp') center 
 main{background:rgba(17,24,39,.91);box-shadow:0 16px 60px #0008;margin-top:clamp(180px,32vh,320px)}
 @media(min-width:900px){body{justify-items:start;padding-left:7vw;background-size:contain;background-position:right center}main{margin-top:0}}
 @media(max-width:380px){main{padding:1.3rem}.state{font-size:1.7rem}}
+dialog{width:min(92vw,440px);border:1px solid #64748b;border-radius:20px;padding:24px;background:#1f2937;color:#f8fafc;text-align:left}dialog::backdrop{background:#000b}dialog h2{font-size:1.4rem}dialog input{font:inherit;width:100%;padding:12px;border-radius:10px;margin:12px 0}dialog button{font:inherit;min-height:44px;padding:10px 14px;border-radius:10px;cursor:pointer}dialog .actions{display:flex;gap:8px;flex-wrap:wrap}dialog p{line-height:1.5}dialog #prompt-feedback{color:#fda4af}
 </style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="since" id="since"></div><div class="stamp" id="stamp"></div>
 <p id="motd" hidden style="white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;background:#111827;border-radius:12px;line-height:1.5"></p>
 <details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><p id="closed-note" hidden style="margin-top:1.5rem;line-height:1.5">But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.</p><p><a href="/WHOIS" style="color:#86efac">Who’s buzzin’? →</a></p>
@@ -32,6 +33,12 @@ main{background:rgba(17,24,39,.91);box-shadow:0 16px 60px #0008;margin-top:clamp
 <p id="attendance-note" aria-live="polite"></p>
 <small>Optional estimate, one person per browser. On the way expires after 15 minutes; check-in after 6 hours. Closing the garage clears both.</small>
 </section></main>
+<dialog id="nickname-prompt" aria-labelledby="prompt-title">
+<form id="nickname-prompt-form"><h2 id="prompt-title">What do the boys call you?</h2>
+<label for="prompt-name">Name or nickname (optional)</label><input id="prompt-name" maxlength="40" autocomplete="nickname">
+<p>Your name will be visible to anyone with the garage link while you’re here or on your way. We’ll remember your name—or your choice to skip—in this browser.</p>
+<div class="actions"><button id="prompt-save" type="submit">Save &amp; continue</button><button id="prompt-skip" type="button">Skip</button><button id="prompt-cancel" type="button">Cancel</button></div>
+<p id="prompt-feedback" role="status"></p></form></dialog>
 <script>
 const card=document.getElementById('card'),lamp=document.getElementById('lamp'),title=document.getElementById('state'),detail=document.getElementById('detail'),stamp=document.getElementById('stamp');
 let last=null,motdMessage='';
@@ -95,7 +102,7 @@ async function refresh(){
 }
 refresh();setInterval(refresh,15000);setInterval(()=>{render();renderAttendance();},1000);
 
-let attendance=null,attendanceBusy=false,nicknameDirty=false;
+let attendance=null,attendanceBusy=false,nicknameDirty=false,pendingAttendanceAction=null,promptBusy=false;
 const attendanceButton=document.getElementById('attendance-button');
 const comingButton=document.getElementById('coming-button');
 function updateAttendanceVisibility(){
@@ -120,7 +127,7 @@ function renderAttendance(){
 }
 let attendanceError='';
 async function refreshAttendance(){
- if(attendanceBusy)return;
+ if(attendanceBusy||promptBusy)return;
  attendanceBusy=true;
  try{
   const response=await fetch('/api/attendance',{cache:'no-store',credentials:'same-origin'});
@@ -150,12 +157,41 @@ async function changeAttendance(action,extra={}){
 }
 attendanceButton.addEventListener('click',()=>{
  if(attendanceButton.disabled)return;
- changeAttendance(attendance?.checkedIn&&attendance.expiresAt>Date.now()?'out':'in');
+ beginAttendance(attendance?.checkedIn&&attendance.expiresAt>Date.now()?'out':'in');
 });
 comingButton.addEventListener('click',()=>{
  if(comingButton.disabled)return;
- changeAttendance(attendance?.onMyWay&&attendance.comingExpiresAt>Date.now()?'cancel-coming':'coming');
+ beginAttendance(attendance?.onMyWay&&attendance.comingExpiresAt>Date.now()?'cancel-coming':'coming');
 });
+const nicknamePrompt=document.getElementById('nickname-prompt');
+function beginAttendance(action){
+ if(attendanceBusy||promptBusy)return;
+ if(['in','coming'].includes(action)&&!attendance?.nicknameChosen&&!attendance?.nickname){
+  pendingAttendanceAction=action;
+  document.getElementById('prompt-name').value=document.getElementById('nickname').value;
+  document.getElementById('prompt-feedback').textContent='';
+  nicknamePrompt.showModal();
+ }else changeAttendance(action);
+}
+function setPromptBusy(value){
+ promptBusy=value;
+ for(const id of ['prompt-save','prompt-skip','prompt-cancel','prompt-name'])document.getElementById(id).disabled=value;
+}
+async function finishPrompt(mode){
+ if(promptBusy||attendanceBusy||!pendingAttendanceAction)return;
+ const name=document.getElementById('prompt-name').value.trim();
+ if(mode==='save'&&!name){document.getElementById('prompt-feedback').textContent='Enter a name, or choose Skip.';return;}
+ setPromptBusy(true);
+ try{
+  const ok=await changeAttendance(pendingAttendanceAction,{nicknameChoice:{mode,...(mode==='save'?{name}:{})}});
+  if(ok){nicknameDirty=false;renderAttendance();nicknamePrompt.close();pendingAttendanceAction=null;}
+  else document.getElementById('prompt-feedback').textContent='Could not confirm attendance. The garage may have closed or gone offline. Try again or cancel.';
+ }finally{setPromptBusy(false);}
+}
+document.getElementById('nickname-prompt-form').addEventListener('submit',event=>{event.preventDefault();finishPrompt('save');});
+document.getElementById('prompt-skip').addEventListener('click',()=>finishPrompt('skip'));
+document.getElementById('prompt-cancel').addEventListener('click',()=>{if(!promptBusy){nicknamePrompt.close();pendingAttendanceAction=null;}});
+nicknamePrompt.addEventListener('cancel',event=>{if(promptBusy)event.preventDefault();else pendingAttendanceAction=null;});
 document.getElementById('nickname').addEventListener('input',()=>{nicknameDirty=true;});
 async function saveNickname(name){
  if(attendanceBusy){document.getElementById('nickname-feedback').textContent='Please try again in a moment.';return;}

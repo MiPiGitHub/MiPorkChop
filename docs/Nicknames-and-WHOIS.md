@@ -15,3 +15,16 @@ Icons and Dave’s manual naming controls are deferred.
 Deployment: merge the testing branch into main and let Cloudflare deploy. The Durable Object creates the profiles table automatically. No extra secret or Pi update is required.
 
 Validation: run the attendance, qr-action, coming-motd, manual-counts, and nicknames-whois test files under tests with Node 24.
+
+
+## First-time prompt and automatic host
+
+The first tap on “I’m here” or “On my way” asks for an optional nickname with Save & continue, Skip, and Cancel. Save or Skip is remembered against the browser identity for up to one year. Existing saved nicknames suppress the prompt. Cancel does not submit attendance or remember a choice. Failed attendance actions do not save a new nickname or Skip choice. The optional nickname settings remain available later; Forget me removes the nickname and keeps the choice to stay unnamed.
+
+The check-in QR continues to perform its direct action without a prompt, as originally designed. A later main-page arrival tap can ask for a nickname if the browser has not made a choice.
+
+A fresh OPEN heartbeat automatically includes one host named PorkChop in WHOIS and in checked-in totals. It is derived from garage state, not a browser visit, and never expires while fresh open heartbeats continue. Closing or stale status removes it. MOTD shows the separate host contribution. Dave should not check himself in or add himself manually; there is no reliable identity link between his browser and the automatic host.
+
+Guest check-ins, six-hour expiry, fifteen-minute inbound expiry, and manual additions continue normally. A nickname does not prove identity or merge visitors. Character aliases remain isolated on the experimental branch.
+
+Additional validation: node tests/prompt-host.test.mjs covers the prompt against the real attendance API and the automatic host lifecycle. Visual browser review remains pending.

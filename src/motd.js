@@ -20,7 +20,8 @@ export class Motd {
   const rows=[...this.sql.exec('SELECT kind,count,expires FROM manual_counts WHERE expires>?',now)];
   const manual=rows.find(r=>r.kind==='checked'),coming=rows.find(r=>r.kind==='coming');
   const garage=[...this.sql.exec('SELECT state,seen FROM garage WHERE id=1')][0];
-  return {count:actual+(manual?.count??0),comingCount:inbound+(coming?.count??0),
+  const hostCount=garage?.state==='OPEN'&&now-garage.seen<=450000?1:0;
+  return {hostCount,count:actual+(manual?.count??0)+hostCount,comingCount:inbound+(coming?.count??0),
    browserCount:actual,browserComingCount:inbound,manualCount:manual?.count??0,manualComingCount:coming?.count??0,
    canAdjust:garage?.state==='OPEN'&&now-garage.seen<=450000};
  }

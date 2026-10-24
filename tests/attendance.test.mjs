@@ -13,15 +13,15 @@ async function call(path,body,visitor=id){
  return {status:r.status,...await r.json()};
 }
 await call('/device',{state:'OPEN'});
-let a=await call('/attendance',{action:'in'});assert.equal(a.count,1);const expiry=a.expiresAt;
-now+=1000;a=await call('/attendance',{action:'in'});assert.equal(a.count,1);assert.equal(a.expiresAt,expiry);
+let a=await call('/attendance',{action:'in'});assert.equal(a.count,2);const expiry=a.expiresAt;
+now+=1000;a=await call('/attendance',{action:'in'});assert.equal(a.count,2);assert.equal(a.expiresAt,expiry);
 a=await call('/attendance');assert.equal(a.expiresAt,expiry);
 await Promise.all(Array.from({length:10},()=>call('/attendance',{action:'in'},second)));
-assert.equal((await call('/attendance')).count,2);
-await call('/attendance',{action:'out'});assert.equal((await call('/attendance')).count,1);
-await call('/attendance',{action:'out'});assert.equal((await call('/attendance')).count,1);
+assert.equal((await call('/attendance')).count,3);
+await call('/attendance',{action:'out'});assert.equal((await call('/attendance')).count,2);
+await call('/attendance',{action:'out'});assert.equal((await call('/attendance')).count,2);
 now=expiry+1000;await call('/device',{state:'OPEN'});
-assert.equal((await call('/attendance')).count,0);
+assert.equal((await call('/attendance')).count,1);
 await call('/attendance',{action:'in'});await call('/device',{state:'CLOSED'});
 assert.equal((await call('/attendance')).count,0);
 assert.equal((await call('/attendance',{action:'in'})).status,409);
