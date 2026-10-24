@@ -16,7 +16,15 @@ main{background:rgba(17,24,39,.91);box-shadow:0 16px 60px #0008;margin-top:clamp
 @media(max-width:380px){main{padding:1.3rem}.state{font-size:1.7rem}}
 </style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="since" id="since"></div><div class="stamp" id="stamp"></div>
 <p id="motd" hidden style="white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;background:#111827;border-radius:12px;line-height:1.5"></p>
-<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><p id="closed-note" hidden style="margin-top:1.5rem;line-height:1.5">But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.</p><section id="attendance-section" aria-label="Buddy check-in" style="margin-top:1.5rem">
+<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><p id="closed-note" hidden style="margin-top:1.5rem;line-height:1.5">But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.</p><p><a href="/WHOIS" style="color:#86efac">Who’s buzzin’? →</a></p>
+<details id="nickname-settings"><summary>Your optional nickname</summary>
+<form id="nickname-form"><label for="nickname">What do the boys call you?</label>
+<input id="nickname" maxlength="40" autocomplete="nickname" placeholder="Name or nickname" style="font:inherit;width:100%;padding:12px;margin:12px 0;border-radius:10px">
+<p style="font-size:.9rem">Optional. Your nickname is visible to anyone with the garage link while you’re checked in or on your way. Remembered in this browser for up to a year; clearing cookies or using another browser means entering it again.</p>
+<button type="submit" style="font:inherit;min-height:44px">Save nickname</button>
+<button id="forget-nickname" type="button" style="font:inherit;min-height:44px">Forget me</button>
+<p id="nickname-feedback" role="status"></p></form></details>
+<section id="attendance-section"  aria-label="Buddy check-in" style="margin-top:1.5rem">
 <p id="attendance-count">Loading check-ins…</p>
 <p id="coming-count"></p>
 <button id="coming-button" type="button" hidden disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer;margin-bottom:.5rem">On my way</button>
@@ -87,7 +95,7 @@ async function refresh(){
 }
 refresh();setInterval(refresh,15000);setInterval(()=>{render();renderAttendance();},1000);
 
-let attendance=null,attendanceBusy=false;
+let attendance=null,attendanceBusy=false,nicknameDirty=false;
 const attendanceButton=document.getElementById('attendance-button');
 const comingButton=document.getElementById('coming-button');
 function updateAttendanceVisibility(){
@@ -96,6 +104,8 @@ function updateAttendanceVisibility(){
  comingButton.hidden=attendanceButton.hidden||!!(attendance?.checkedIn&&attendance.expiresAt>Date.now());
 }
 function renderAttendance(){
+ if(attendance&&!nicknameDirty)document.getElementById('nickname').value=attendance.nickname??'';
+
  updateAttendanceVisibility();
  const count=document.getElementById('attendance-count'),note=document.getElementById('attendance-note');
  const checked=attendance?.checkedIn&&attendance.expiresAt>Date.now();
@@ -120,13 +130,13 @@ async function refreshAttendance(){
  }catch{attendance=null;}
  finally{attendanceBusy=false;renderAttendance();}
 }
-async function changeAttendance(action){
+async function changeAttendance(action,extra={}){
  if(attendanceBusy)return;
  attendanceError='';
  attendanceBusy=true;renderAttendance();
  let failed=false;
  try{
-  const response=await fetch('/api/attendance',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});
+  const response=await fetch('/api/attendance',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});
   if(!response.ok)throw Error();
   attendance=await response.json();
  }catch{failed=true;}
@@ -136,6 +146,7 @@ async function changeAttendance(action){
   attendanceError='Could not confirm the change. Check your status and try again.';
   renderAttendance();
  }else renderAttendance();
+ return !failed;
 }
 attendanceButton.addEventListener('click',()=>{
  if(attendanceButton.disabled)return;
@@ -145,6 +156,15 @@ comingButton.addEventListener('click',()=>{
  if(comingButton.disabled)return;
  changeAttendance(attendance?.onMyWay&&attendance.comingExpiresAt>Date.now()?'cancel-coming':'coming');
 });
+document.getElementById('nickname').addEventListener('input',()=>{nicknameDirty=true;});
+async function saveNickname(name){
+ if(attendanceBusy){document.getElementById('nickname-feedback').textContent='Please try again in a moment.';return;}
+ const ok=await changeAttendance('nickname',{name});
+ if(ok){nicknameDirty=false;renderAttendance();}
+ document.getElementById('nickname-feedback').textContent=ok?(name.trim()?'Nickname saved. See you at the garage!':'Nickname forgotten. Your current attendance stays anonymous.'):'Could not save nickname. Please try again.';
+}
+document.getElementById('nickname-form').addEventListener('submit',event=>{event.preventDefault();saveNickname(document.getElementById('nickname').value);});
+document.getElementById('forget-nickname').addEventListener('click',()=>saveNickname(''));
 refreshAttendance();setInterval(refreshAttendance,15000);
 async function refreshMotd(){
  try{const response=await fetch('/api/motd',{cache:'no-store'});if(!response.ok)throw Error();const data=await response.json();motdMessage=typeof data.message==='string'?data.message:'';}

@@ -7,19 +7,33 @@ export class Attendance {
  constructor(ctx,env={}){
   this.ctx=ctx;this.sql=ctx.storage.sql;
   this.motd=new Motd(ctx,env);
+  this.sql.exec("CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS visits (id TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS inbound (id TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS garage (id INTEGER PRIMARY KEY, state TEXT, seen INTEGER)");
+ }
+ roster(now){
+  const garage=[...this.sql.exec("SELECT state,seen FROM garage WHERE id=1")][0];
+  const state=garage&&now-garage.seen<=450000?garage.state:'UNKNOWN';
+  const list=(table,kind)=>{
+   if(state!=='OPEN')return [];
+   const rows=[...this.sql.exec("SELECT p.name AS name,v.expires AS expiresAt FROM "+table+" v LEFT JOIN profiles p ON p.id=v.id AND p.expires>? WHERE v.expires>? ORDER BY p.name COLLATE NOCASE",now,now)];
+   const manual=[...this.sql.exec("SELECT count,expires FROM manual_counts WHERE kind=? AND expires>?",kind,now)][0];
+   if(manual?.count)rows.push({name:null,count:manual.count,expiresAt:manual.expires});
+   return rows;
+  };
+  return {state,lastSeen:garage?.seen??null,here:list('visits','checked'),coming:list('inbound','coming')};
  }
  async fetch(request){
   const path=new URL(request.url).pathname;
   if(path==="/motd"||path==="/motd/session"||path==="/motd/counts")return this.motd.fetch(request);
   let body={};
   if(request.method==="POST"){
-   try{body=await request.json();}catch{return reply({error:"Invalid JSON"},400);}
+   try{const raw=await request.text();if(raw.length>2048)return reply({error:"Request too large"},413);body=JSON.parse(raw);if(!body||typeof body!=="object"||Array.isArray(body))return reply({error:"Invalid object"},400);}catch{return reply({error:"Invalid JSON"},400);}
   }
   return this.ctx.storage.transactionSync(()=>{
    const now=Date.now();
+   this.sql.exec("DELETE FROM profiles WHERE expires<=?",now);
    this.sql.exec("DELETE FROM visits WHERE expires<=?",now);
    this.sql.exec("DELETE FROM inbound WHERE expires<=?",now);
    this.sql.exec("DELETE FROM manual_counts WHERE expires<=?",now);
@@ -33,6 +47,7 @@ export class Attendance {
     }
     return reply({ok:true});
    }
+   if(path==="/whois")return request.method==="GET"?reply(this.roster(now)):reply({error:"Method not allowed"},405);
    if(path!=="/attendance")return reply({error:"Not found"},404);
    const id=request.headers.get("X-Visitor-ID");
    if(!/^[0-9a-f-]{36}$/.test(id??""))return reply({error:"Missing browser identity"},400);
@@ -40,7 +55,13 @@ export class Attendance {
    const available=!!garage&&now-garage.seen<=450000;
    const canCheckIn=available&&garage.state==="OPEN";
    if(request.method==="POST"){
-    if(body.action==="out"){
+    if(body.action==="nickname"){
+     if(typeof body.name!=="string"||body.name.length>40||/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(body.name))return reply({error:"Use a nickname of 40 characters or fewer, without control characters"},400);
+     const name=body.name.trim();
+     if(name)this.sql.exec("INSERT OR REPLACE INTO profiles VALUES (?,?,?)",id,name,now+365*24*60*60*1000);
+     else this.sql.exec("DELETE FROM profiles WHERE id=?",id);
+    }
+    else if(body.action==="out"){
      this.sql.exec("DELETE FROM visits WHERE id=?",id);
      this.sql.exec("DELETE FROM inbound WHERE id=?",id);
     }
@@ -64,7 +85,7 @@ export class Attendance {
    }else if(request.method!=="GET")return reply({error:"Method not allowed"},405);
    const visit=[...this.sql.exec("SELECT expires FROM visits WHERE id=?",id)][0];
    const coming=[...this.sql.exec("SELECT expires FROM inbound WHERE id=?",id)][0];
-   return reply({...this.motd.counts(now),
+   return reply({...this.motd.counts(now),nickname:[...this.sql.exec("SELECT name FROM profiles WHERE id=?",id)][0]?.name??"",
     onMyWay:!!coming,comingExpiresAt:coming?.expires??null,
     checkedIn:!!visit,expiresAt:visit?.expires??null,canCheckIn,available});
   });
