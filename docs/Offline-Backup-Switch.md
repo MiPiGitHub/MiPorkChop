@@ -27,3 +27,7 @@ For rollback, deploy the previous Worker version.  Extra tables are harmless to 
 ## Validation
 
 Run all `tests/*.test.mjs` with Node 24 and the Python unit tests.  The fallback test covers authentication, origin checks, missing/stale devices, the exact 450-second boundary, check-in and roster behavior, manual close, returning OPEN and CLOSED devices, and override invalidation.
+
+## Production acceptance — October 23, 2026 (America/Chicago)
+
+Deployed through [PR #15](https://github.com/MiPiGitHub/MiPorkChop/pull/15), merge commit `2f532dc152cf345847e426bca19ddc9c2a2c2e43`.  Matt confirmed both manual ON/OFF actions work and the backup control disappears when the MiPi returns online.  This records user-confirmed production function testing, in addition to the automated checks above.  No Pi software update was needed.
