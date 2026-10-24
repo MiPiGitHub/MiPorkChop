@@ -37,14 +37,14 @@ function browser(){
 await state('OPEN');
 const first=browser(),second=browser();
 // A QR document GET alone does not check anyone in.
-await first.fetch('/check-in');assert.equal((await first.status()).count,0);
+await first.fetch('/check-in');assert.equal((await first.status()).count,1);
 assert.match(await first.scan('/check-in'),/You’re checked in/);
 const expiry=(await first.status()).expiresAt;
 now+=1000;await first.scan('/check-in');
-assert.equal((await first.status()).count,1);assert.equal((await first.status()).expiresAt,expiry);
-await second.scan('/check-in');assert.equal((await first.status()).count,2);
+assert.equal((await first.status()).count,2);assert.equal((await first.status()).expiresAt,expiry);
+await second.scan('/check-in');assert.equal((await first.status()).count,3);
 await first.scan('/check-out');await first.scan('/check-out');
-assert.equal((await second.status()).count,1);assert.deepEqual(first.actions,['in','in','out','out']);
+assert.equal((await second.status()).count,2);assert.deepEqual(first.actions,['in','in','out','out']);
 await state('CLOSED');assert.equal(await first.scan('/check-in'),'Check-in unavailable');
 assert.equal(await first.scan('/check-out'),'You’re checked out');
 await state('OPEN');await first.scan('/check-in');now+=450001;

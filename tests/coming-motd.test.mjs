@@ -17,13 +17,13 @@ const a=crypto.randomUUID(),b=crypto.randomUUID();
 async function call(path,body,id=a){const r=await obj.fetch(new Request('https://internal'+path,{method:body?'POST':'GET',headers:{'X-Visitor-ID':id},body:body?JSON.stringify(body):undefined}));return {status:r.status,...await r.json()};}
 await call('/device',{state:'OPEN'});
 let data=await call('/attendance',{action:'coming'});
-assert.equal(data.comingCount,1);assert.equal(data.count,0);assert.equal(data.comingExpiresAt,now+900000);
+assert.equal(data.comingCount,1);assert.equal(data.count,1);assert.equal(data.comingExpiresAt,now+900000);
 const expiry=data.comingExpiresAt;
 now+=1000;data=await call('/attendance',{action:'coming'});assert.equal(data.comingExpiresAt,expiry);
 await call('/attendance',{action:'coming'},b);
 assert.equal((await call('/attendance')).comingCount,2);
 // Same attendance API used by the QR page atomically converts inbound to arrived.
-data=await call('/attendance',{action:'in'});assert.equal(data.count,1);assert.equal(data.comingCount,1);assert.equal(data.onMyWay,false);
+data=await call('/attendance',{action:'in'});assert.equal(data.count,2);assert.equal(data.comingCount,1);assert.equal(data.onMyWay,false);
 assert.equal(data.expiresAt,now+21600000);
 data=await call('/attendance',{action:'coming'});assert.equal(data.onMyWay,false);assert.equal(data.comingCount,1);
 await call('/attendance',{action:'cancel-coming'},b);assert.equal((await call('/attendance')).comingCount,0);

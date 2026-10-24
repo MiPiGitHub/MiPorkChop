@@ -8,7 +8,7 @@ body{margin:0;background:#111827;color:#f8fafc;padding:24px 16px}main{max-width:
 <form id="login"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="current-password" required><div class="actions"><button class="primary" type="submit">Unlock</button></div></form>
 <section id="editor" hidden>
 <h2>PorkChop’s headcount</h2>
-<p>Add the buddies who skipped checking in. Browser check-ins are counted separately.</p>
+<p>PorkChop is counted automatically while the garage is open—Dave does not need to check in or add himself manually. Add other buddies who skipped checking in.</p>
 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
 <form class="count-form" data-kind="checked"><h3>Checked in</h3><strong id="checked-total">—</strong><p id="checked-breakdown"></p><label for="checked-manual">Manually added</label><input id="checked-manual" type="number" inputmode="numeric" min="0" max="500" step="1" required value="0"><button type="submit">Save checked in</button></form>
 <form class="count-form" data-kind="coming"><h3>On the way</h3><strong id="coming-total">—</strong><p id="coming-breakdown"></p><label for="coming-manual">Manually added</label><input id="coming-manual" type="number" inputmode="numeric" min="0" max="500" step="1" required value="0"><button type="submit">Save on the way</button></form>
@@ -37,7 +37,7 @@ const dirtyCounts=new Set();
 function renderCounts(data){
  for(const [kind,total,actual,manual] of [['checked',data.count,data.browserCount,data.manualCount],['coming',data.comingCount,data.browserComingCount,data.manualComingCount]]){
   document.getElementById(kind+'-total').textContent=total+' buddies';
-  document.getElementById(kind+'-breakdown').textContent=actual+' browser + '+manual+' manual';
+  document.getElementById(kind+'-breakdown').textContent=actual+' browser + '+manual+' manual'+(kind==='checked'&&data.hostCount?' + 1 host (PorkChop)':'');
   if(!dirtyCounts.has(kind))document.getElementById(kind+'-manual').value=manual;
  }
  document.getElementById('count-feedback').textContent=data.canAdjust?'':'Counts can be adjusted when the garage is open and online.';

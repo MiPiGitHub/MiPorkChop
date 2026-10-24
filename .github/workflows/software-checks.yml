@@ -22,6 +22,7 @@ jobs:
           node tests/coming-motd.test.mjs
           node tests/manual-counts.test.mjs
           node tests/nicknames-whois.test.mjs
+          node tests/prompt-host.test.mjs
       - name: Python syntax
         run: python -m py_compile src/porkchop.py tests/test_porkchop.py
       - name: Shell syntax

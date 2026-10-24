@@ -7,6 +7,7 @@ export class Attendance {
  constructor(ctx,env={}){
   this.ctx=ctx;this.sql=ctx.storage.sql;
   this.motd=new Motd(ctx,env);
+  this.sql.exec("CREATE TABLE IF NOT EXISTS nickname_choices (id TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS visits (id TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
   this.sql.exec("CREATE TABLE IF NOT EXISTS inbound (id TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
@@ -18,6 +19,7 @@ export class Attendance {
   const list=(table,kind)=>{
    if(state!=='OPEN')return [];
    const rows=[...this.sql.exec("SELECT p.name AS name,v.expires AS expiresAt FROM "+table+" v LEFT JOIN profiles p ON p.id=v.id AND p.expires>? WHERE v.expires>? ORDER BY p.name COLLATE NOCASE",now,now)];
+   if(kind==='checked')rows.unshift({name:'PorkChop',host:true,expiresAt:garage.seen+450000});
    const manual=[...this.sql.exec("SELECT count,expires FROM manual_counts WHERE kind=? AND expires>?",kind,now)][0];
    if(manual?.count)rows.push({name:null,count:manual.count,expiresAt:manual.expires});
    return rows;
@@ -33,6 +35,7 @@ export class Attendance {
   }
   return this.ctx.storage.transactionSync(()=>{
    const now=Date.now();
+   this.sql.exec("DELETE FROM nickname_choices WHERE expires<=?",now);
    this.sql.exec("DELETE FROM profiles WHERE expires<=?",now);
    this.sql.exec("DELETE FROM visits WHERE expires<=?",now);
    this.sql.exec("DELETE FROM inbound WHERE expires<=?",now);
@@ -54,12 +57,16 @@ export class Attendance {
    const garage=[...this.sql.exec("SELECT state,seen FROM garage WHERE id=1")][0];
    const available=!!garage&&now-garage.seen<=450000;
    const canCheckIn=available&&garage.state==="OPEN";
+   const choice=body.nicknameChoice;
+   const validName=name=>typeof name==='string'&&name.length<=40&&!/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(name);
+   if(choice!==undefined&&(!['in','coming'].includes(body.action)||!choice||typeof choice!=='object'||Array.isArray(choice)||!['save','skip'].includes(choice.mode)||(choice.mode==='save'&&(!validName(choice.name)||!choice.name.trim()))))return reply({error:'Enter a nickname of 1–40 characters, or choose Skip'},400);
    if(request.method==="POST"){
     if(body.action==="nickname"){
      if(typeof body.name!=="string"||body.name.length>40||/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(body.name))return reply({error:"Use a nickname of 40 characters or fewer, without control characters"},400);
      const name=body.name.trim();
      if(name)this.sql.exec("INSERT OR REPLACE INTO profiles VALUES (?,?,?)",id,name,now+365*24*60*60*1000);
      else this.sql.exec("DELETE FROM profiles WHERE id=?",id);
+     this.sql.exec("INSERT OR REPLACE INTO nickname_choices VALUES (?,?)",id,now+365*24*60*60*1000);
     }
     else if(body.action==="out"){
      this.sql.exec("DELETE FROM visits WHERE id=?",id);
@@ -83,9 +90,16 @@ export class Attendance {
      this.sql.exec("DELETE FROM inbound WHERE id=?",id);
     }else return reply({error:"Invalid action"},400);
    }else if(request.method!=="GET")return reply({error:"Method not allowed"},405);
+   // Save the prompt choice only after the attendance action succeeds.
+   if(choice!==undefined){
+    if(choice.mode==='save')this.sql.exec("INSERT OR REPLACE INTO profiles VALUES (?,?,?)",id,choice.name.trim(),now+365*24*60*60*1000);
+    this.sql.exec("INSERT OR REPLACE INTO nickname_choices VALUES (?,?)",id,now+365*24*60*60*1000);
+   }
+   const profile=[...this.sql.exec("SELECT name FROM profiles WHERE id=?",id)][0];
+   const nicknameChosen=!!profile||!![...this.sql.exec("SELECT id FROM nickname_choices WHERE id=?",id)][0];
    const visit=[...this.sql.exec("SELECT expires FROM visits WHERE id=?",id)][0];
    const coming=[...this.sql.exec("SELECT expires FROM inbound WHERE id=?",id)][0];
-   return reply({...this.motd.counts(now),nickname:[...this.sql.exec("SELECT name FROM profiles WHERE id=?",id)][0]?.name??"",
+   return reply({...this.motd.counts(now),nickname:profile?.name??"",nicknameChosen,
     onMyWay:!!coming,comingExpiresAt:coming?.expires??null,
     checkedIn:!!visit,expiresAt:visit?.expires??null,canCheckIn,available});
   });

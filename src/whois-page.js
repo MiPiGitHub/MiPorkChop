@@ -23,7 +23,7 @@ footer{margin-top:24px;color:#9eafbf;font-size:.85rem;line-height:1.7}a{color:#a
 <section aria-labelledby="here-heading"><h2 id="here-heading">At the GarageMahal</h2><div class="total" id="here-total">—</div><ul id="here-list"></ul><p class="unnamed" id="here-unnamed"></p><p class="empty" id="here-empty">Checking attendance…</p></section>
 <section aria-labelledby="coming-heading"><h2 id="coming-heading">On the way</h2><div class="total" id="coming-total">—</div><ul id="coming-list"></ul><p class="unnamed" id="coming-unnamed"></p><p class="empty" id="coming-empty">Checking attendance…</p></section>
 </div>
-<footer><a href="/">← Back to GarageMahal</a><p>Optional nicknames, supplied by the buddies themselves. Counts include unnamed buddies and Dave’s manual additions. No attendance history.</p></footer>
+<footer><a href="/">← Back to GarageMahal</a><p>Optional nicknames, supplied by the buddies themselves. Counts include unnamed buddies and Dave’s manual additions. PorkChop is the automatic host while the garage is open. No attendance history.</p></footer>
 </main><script>
 let roster=null;
 function render(){
