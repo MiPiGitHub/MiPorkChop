@@ -17,3 +17,7 @@ The QR landing GET itself does not change attendance; its script uses the existi
 origin-checked POST API. HTTP QR links redirect to HTTPS before any action.
 
 Regenerate images with `python scripts/generate_qr.py` (requires qrcode and Pillow).
+
+## MOTD wooden-sign banner
+
+Matt supplied a photo of the PORKCHOP sign in Dave's garage. The original JPEG is embedded in `src/porkchop-sign.js` and served by the Worker at `/porkchop-sign-v1.jpg`. MOTD uses a responsive CSS crop to frame the wooden sign, with descriptive alternative text and reserved space to prevent layout shift. The public status page keeps its existing cartoon backdrop.
