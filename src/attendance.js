@@ -13,7 +13,7 @@ export class Attendance {
  }
  async fetch(request){
   const path=new URL(request.url).pathname;
-  if(path==="/motd"||path==="/motd/session")return this.motd.fetch(request);
+  if(path==="/motd"||path==="/motd/session"||path==="/motd/counts")return this.motd.fetch(request);
   let body={};
   if(request.method==="POST"){
    try{body=await request.json();}catch{return reply({error:"Invalid JSON"},400);}
@@ -22,12 +22,14 @@ export class Attendance {
    const now=Date.now();
    this.sql.exec("DELETE FROM visits WHERE expires<=?",now);
    this.sql.exec("DELETE FROM inbound WHERE expires<=?",now);
+   this.sql.exec("DELETE FROM manual_counts WHERE expires<=?",now);
    if(path==="/device"&&request.method==="POST"){
     if(!["OPEN","CLOSED"].includes(body.state))return reply({error:"Invalid state"},400);
     this.sql.exec("INSERT OR REPLACE INTO garage VALUES (1,?,?)",body.state,now);
     if(body.state==="CLOSED"){
      this.sql.exec("DELETE FROM visits");
      this.sql.exec("DELETE FROM inbound");
+     this.sql.exec("DELETE FROM manual_counts");
     }
     return reply({ok:true});
    }
@@ -62,10 +64,10 @@ export class Attendance {
    }else if(request.method!=="GET")return reply({error:"Method not allowed"},405);
    const visit=[...this.sql.exec("SELECT expires FROM visits WHERE id=?",id)][0];
    const coming=[...this.sql.exec("SELECT expires FROM inbound WHERE id=?",id)][0];
-   return reply({count:[...this.sql.exec("SELECT COUNT(*) AS count FROM visits")][0].count,
-    comingCount:[...this.sql.exec("SELECT COUNT(*) AS count FROM inbound")][0].count,
+   return reply({...this.motd.counts(now),
     onMyWay:!!coming,comingExpiresAt:coming?.expires??null,
     checkedIn:!!visit,expiresAt:visit?.expires??null,canCheckIn,available});
   });
  }
 }
+
