@@ -24,6 +24,8 @@ jobs:
           node tests/nicknames-whois.test.mjs
           node tests/prompt-host.test.mjs
           node tests/viewer-cleanup.test.mjs
+          node tests/fallback-switch.test.mjs
+          node tests/fallback-ui.test.mjs
       - name: Python syntax
         run: python -m py_compile src/porkchop.py tests/test_porkchop.py
       - name: Shell syntax

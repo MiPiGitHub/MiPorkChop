@@ -51,3 +51,11 @@ assert(html.indexOf('id="options"')<html.indexOf('id="status-details"'));
 assert(!/<details[^>]*\sopen(?:[\s>])/.test(html));
 assert.match(html,/id="attendance-button" class="primary"/);
 console.log('PASS: compact open view, collapsed settings, closed/unavailable states, primary action and retained last-confirmed time on network errors.');
+// Manual fallback works even when the Pi has never sent a heartbeat.
+vm.runInContext("last={state:'OPEN',source:'manual',lastSeen:null,confirmedAt:new Date().toISOString(),lastChanged:new Date().toISOString()};statusFetchFailed=false;render();renderAttendance();",context);
+assert.equal(nodes['attendance-section'].hidden,false);
+assert.equal(nodes['attendance-button'].hidden,false);
+assert.match(nodes.stamp.textContent,/backup switch/);
+vm.runInContext("last.confirmedAt=new Date(Date.now()-451000).toISOString();render();renderAttendance();",context);
+assert.equal(nodes['attendance-section'].hidden,true);
+assert.equal(nodes['attendance-button'].hidden,true);
