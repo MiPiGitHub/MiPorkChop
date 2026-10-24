@@ -1,3 +1,4 @@
+import { PORKCHOP_SIGN_BASE64 } from './porkchop-sign.js';
 import { WHOIS_HTML } from './whois-page.js';
 import { BACKDROP_BASE64 } from './backdrop.js';
 import { Attendance } from './attendance.js';
@@ -30,6 +31,7 @@ async function status(env){
 export default {
  async fetch(request,env){
   const url=new URL(request.url),path=url.pathname;
+  if(path==="/porkchop-sign-v1.jpg"&&request.method==="GET")return new Response(Uint8Array.from(atob(PORKCHOP_SIGN_BASE64),c=>c.charCodeAt(0)),{headers:{"content-type":"image/jpeg","cache-control":"public, max-age=31536000, immutable","x-content-type-options":"nosniff"}});
   if(path==="/porkchop-backdrop-v1.webp"&&request.method==="GET")return new Response(Uint8Array.from(atob(BACKDROP_BASE64),c=>c.charCodeAt(0)),{headers:{"content-type":"image/webp","cache-control":"public, max-age=31536000, immutable","x-content-type-options":"nosniff"}});
   if(path==="/WHOIS"||path==="/whois"){
    if(request.method!=="GET")return json({error:"Method not allowed"},405);
@@ -44,7 +46,7 @@ export default {
   if(path==="/MOTD"||path==="/motd"){
    if(request.method!=="GET")return json({error:"Method not allowed"},405);
    if(url.protocol!=="https:"){url.protocol="https:";return Response.redirect(url.toString(),308);}
-   return new Response(MOTD_HTML,{headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-robots-tag":"noindex, nofollow","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});
+   return new Response(MOTD_HTML,{headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-robots-tag":"noindex, nofollow","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});
   }
   if(path==="/api/motd"||path==="/api/motd/session"||path==="/api/motd/counts"||path==="/api/motd/garage"){
    if(url.protocol!=="https:")return json({error:"HTTPS required"},403);
