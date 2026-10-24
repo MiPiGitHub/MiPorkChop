@@ -7,41 +7,71 @@
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MiPorkChop">
-<style>*{box-sizing:border-box}.since{margin-top:.8rem;color:#e2e8f0}details{margin-top:1.5rem;color:#cbd5e1;font-size:.95rem}summary{cursor:pointer;padding:.6rem}details p{line-height:1.5}
-:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111827;color:white;text-align:center}main{width:min(90vw,500px);padding:2rem;border:1px solid #374151;border-radius:22px;background:#1f2937}h1{font-size:1.3rem;letter-spacing:.13em}.lamp{font-size:5rem;margin:1rem}.state{font-size:2rem;font-weight:900}.detail{font-size:1.2rem;margin-top:.6rem}.stamp{color:#cbd5e1;margin-top:1rem}.open .state{color:#4ade80}.closed .state{color:#f87171}.unknown .state{color:#d1d5db}
-/* Shared decorative backdrop for OPEN, CLOSED and UNKNOWN. */
-body{padding:24px 0;background:#111827 url('/porkchop-backdrop-v1.webp') center top / cover fixed no-repeat}
-main{background:rgba(17,24,39,.91);box-shadow:0 16px 60px #0008;margin-top:clamp(180px,32vh,320px)}
-@media(min-width:900px){body{justify-items:start;padding-left:7vw;background-size:contain;background-position:right center}main{margin-top:0}}
-@media(max-width:380px){main{padding:1.3rem}.state{font-size:1.7rem}}
-dialog{width:min(92vw,440px);border:1px solid #64748b;border-radius:20px;padding:24px;background:#1f2937;color:#f8fafc;text-align:left}dialog::backdrop{background:#000b}dialog h2{font-size:1.4rem}dialog input{font:inherit;width:100%;padding:12px;border-radius:10px;margin:12px 0}dialog button{font:inherit;min-height:44px;padding:10px 14px;border-radius:10px;cursor:pointer}dialog .actions{display:flex;gap:8px;flex-wrap:wrap}dialog p{line-height:1.5}dialog #prompt-feedback{color:#fda4af}
-</style></head><body><main id="card" class="unknown" aria-live="polite"><h1>GARAGEMAHAL</h1><div class="lamp" id="lamp">⚪</div><div class="state" id="state">CHECKING STATUS</div><div class="detail" id="detail">Connecting to Cloudflare…</div><div class="since" id="since"></div><div class="stamp" id="stamp"></div>
-<p id="motd" hidden style="white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;background:#111827;border-radius:12px;line-height:1.5"></p>
-<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details><p id="closed-note" hidden style="margin-top:1.5rem;line-height:1.5">But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.</p><p><a href="/WHOIS" style="color:#86efac">Who’s buzzin’? →</a></p>
-<details id="nickname-settings"><summary>Your optional nickname</summary>
-<form id="nickname-form"><label for="nickname">What do the boys call you?</label>
-<input id="nickname" maxlength="40" autocomplete="nickname" placeholder="Name or nickname" style="font:inherit;width:100%;padding:12px;margin:12px 0;border-radius:10px">
-<p style="font-size:.9rem">Optional. Your nickname is visible to anyone with the garage link while you’re checked in or on your way. Remembered in this browser for up to a year; clearing cookies or using another browser means entering it again.</p>
-<button type="submit" style="font:inherit;min-height:44px">Save nickname</button>
-<button id="forget-nickname" type="button" style="font:inherit;min-height:44px">Forget me</button>
-<p id="nickname-feedback" role="status"></p></form></details>
-<section id="attendance-section"  aria-label="Buddy check-in" style="margin-top:1.5rem">
-<p id="attendance-count">Loading check-ins…</p>
-<p id="coming-count"></p>
-<button id="coming-button" type="button" hidden disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer;margin-bottom:.5rem">On my way</button>
-<button id="attendance-button" type="button" hidden disabled style="font:inherit;min-height:44px;padding:.7rem 1.2rem;border-radius:12px;cursor:pointer">I'm here</button>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101823;color:#f3f6fa}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;min-height:100svh;padding:24px 6vw;display:flex;align-items:center;background:#101823 url('/porkchop-backdrop-v1.webp') right center / contain no-repeat}
+main{width:min(100%,490px);padding:32px;background:rgba(15,23,34,.94);border:1px solid #354150;border-radius:24px;box-shadow:0 18px 64px #0005}
+h1{font-size:.8rem;letter-spacing:.23em;color:#a8b7c7;margin:0 0 22px;font-weight:700}
+.status-row{display:flex;align-items:center;gap:12px}.lamp{font-size:1.2rem;line-height:1;flex:none}.state{font-size:clamp(1.35rem,3vw,1.75rem);line-height:1.25;letter-spacing:-.025em;font-weight:800;margin:0}
+.open .state{color:#86efac}.closed .state{color:#fca5a5}.unknown .state{color:#e2e8f0}
+.since{font-size:.9rem;color:#a8b7c7;margin:9px 0 0 32px;line-height:1.5}
+.detail,.stamp{color:#b6c3d2;font-size:.95rem;line-height:1.6}.detail{margin:16px 0 0}.stamp{margin-top:10px}
+.message{padding:16px 18px;margin:24px 0 0;border-radius:14px;border:1px solid #344353;background:#1c2938}
+.message-label{font-size:.65rem;letter-spacing:.16em;color:#a8b7c7;font-weight:700;margin:0 0 8px}
+#motd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+#closed-note{margin:24px 0 0;padding:18px;border-left:3px solid #fca5a5;background:#1c2938;border-radius:0 12px 12px 0;line-height:1.7;color:#d9e2ed}
+#attendance-section{margin-top:26px}.counts{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:1.1rem;font-weight:650}.count-dot{color:#64748b}#coming-count{color:#a8b7c7;font-weight:400}
+a{color:#a7f3d0;text-underline-offset:4px}.who-link{display:inline-block;padding:10px 0 14px;font-size:.9rem}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.attendance-actions{margin-top:6px}
+button{font:inherit;min-height:46px;padding:11px 17px;border-radius:12px;border:1px solid #58677a;background:#263547;color:#f3f6fa;cursor:pointer}
+button:hover{background:#33475d}button:disabled{opacity:.5;cursor:wait}
+.primary{background:#86efac;color:#10281b;border-color:#86efac;font-weight:700}.primary:hover{background:#a7f3c0}
+.attendance-actions button{flex:1;min-width:130px}
+#attendance-note{font-size:.85rem;color:#a8b7c7;line-height:1.6;margin:12px 0 0}#attendance-note:empty{display:none}
+footer{margin-top:24px;border-top:1px solid #344150;padding-top:10px}
+details{font-size:.9rem;color:#b6c3d2}summary{cursor:pointer;padding:12px 0;min-height:44px}
+details details{border-top:1px solid #2f3d4d;margin-top:8px}
+details p,details small{line-height:1.65}details p{margin:8px 0 14px}
+label{display:block;margin-top:10px;color:#e2e8f0}
+input{font:inherit;width:100%;padding:12px;background:#101823;color:#f3f6fa;border:1px solid #64748b;border-radius:10px;margin:10px 0}
+:focus-visible{outline:3px solid #fbbf24;outline-offset:4px}
+dialog{width:min(92vw,440px);max-height:90svh;overflow:auto;border:1px solid #64748b;border-radius:20px;padding:24px;background:#1f2937;color:#f8fafc;text-align:left}
+dialog::backdrop{background:#000b}dialog h2{font-size:1.4rem;margin-top:0}dialog p{line-height:1.6}#prompt-feedback{color:#fda4af}
+@media(min-width:1200px){body{padding-left:9vw}}
+@media(max-width:899px){body{justify-content:center;align-items:flex-start;padding:150px 16px 24px;background-size:auto 300px;background-position:right top;background-attachment:scroll}main{max-width:490px;padding:26px}}
+@media(max-width:380px){body{padding:120px 12px 20px;background-size:auto 250px}main{padding:22px}.state{font-size:1.3rem}.attendance-actions button{min-width:110px;padding:11px 10px}.counts{font-size:1rem;gap:8px}}
+</style></head><body>
+<main id="card" class="unknown">
+<header><h1>GARAGEMAHAL</h1><div class="status-row" role="status"><span class="lamp" id="lamp" aria-hidden="true">⚪</span><h2 class="state" id="state">CHECKING STATUS</h2></div>
+<div class="since" id="since"></div><p class="detail" id="detail">Connecting to the garage…</p><p id="unavailable-stamp" class="stamp" hidden></p></header>
+<section id="motd-section" class="message" aria-label="Dave’s message" hidden><p class="message-label">FROM PORKCHOP</p><p id="motd" hidden></p></section>
+<p id="closed-note" hidden></p>
+<section id="attendance-section" aria-label="Buddy check-in" hidden>
+<div class="counts"><span id="attendance-count">Loading attendance…</span><span id="count-dot" class="count-dot" aria-hidden="true">·</span><span id="coming-count"></span></div>
+<a class="who-link" href="/WHOIS">Who’s buzzin’? →</a>
+<div class="actions attendance-actions"><button id="attendance-button" class="primary" type="button" hidden disabled>I'm here</button><button id="coming-button" type="button" hidden disabled>On my way</button></div>
 <p id="attendance-note" aria-live="polite"></p>
-<small>Optional estimate, one person per browser. On the way expires after 15 minutes; check-in after 6 hours. Closing the garage clears both.</small>
-</section></main>
+</section>
+<footer><details id="options"><summary>Options &amp; info</summary>
+<details id="nickname-settings"><summary>Your nickname</summary><form id="nickname-form"><label for="nickname">What do the boys call you?</label>
+<input id="nickname" maxlength="40" autocomplete="nickname" placeholder="Name or nickname">
+<p>Optional. Your nickname is visible to anyone with the garage link while you’re here or on your way. It’s remembered for up to a year in this browser.</p>
+<div class="actions"><button type="submit">Save nickname</button><button id="forget-nickname" type="button">Forget me</button></div>
+<p id="nickname-feedback" role="status"></p></form></details>
+<details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details>
+<details><summary>How check-in works</summary><p>Optional estimate, one person per browser. On the way expires after 15 minutes; check-in after 6 hours. Closing clears both. PorkChop is counted automatically while open.</p><p>Use the same browser to check out. Clearing cookies or switching browsers may require entering your nickname again. No GPS.</p></details>
+<details id="status-details"><summary>Status details</summary><p id="changed-detail"></p><p class="stamp" id="stamp"></p><p>Updates are checked every 15 seconds. If the garage hasn’t reported in over 7½ minutes, its status is unavailable.</p></details>
+</details></footer></main>
 <dialog id="nickname-prompt" aria-labelledby="prompt-title">
 <form id="nickname-prompt-form"><h2 id="prompt-title">What do the boys call you?</h2>
 <label for="prompt-name">Name or nickname (optional)</label><input id="prompt-name" maxlength="40" autocomplete="nickname">
 <p>Your name will be visible to anyone with the garage link while you’re here or on your way. We’ll remember your name—or your choice to skip—in this browser.</p>
-<div class="actions"><button id="prompt-save" type="submit">Save &amp; continue</button><button id="prompt-skip" type="button">Skip</button><button id="prompt-cancel" type="button">Cancel</button></div>
+<div class="actions"><button id="prompt-save" class="primary" type="submit">Save &amp; continue</button><button id="prompt-skip" type="button">Skip</button><button id="prompt-cancel" type="button">Cancel</button></div>
 <p id="prompt-feedback" role="status"></p></form></dialog>
 <script>
 const card=document.getElementById('card'),lamp=document.getElementById('lamp'),title=document.getElementById('state'),detail=document.getElementById('detail'),stamp=document.getElementById('stamp');
-let last=null,motdMessage='';
+let last=null,motdMessage='',statusFetchFailed=false;
 const closedMessages=[
  'But we could be… Text Dave and see if he’s up for buzzin’. This garage isn’t going to open itself.',
  'The boys ain’t buzzin’. A tragic waste of perfectly good garage. Text Dave about fixing that.',
@@ -74,30 +104,36 @@ function formatAge(age){
 function render(){
  const age=last?.lastSeen?Math.max(0,Math.floor((Date.now()-Date.parse(last.lastSeen))/1000)):null;
  const fresh=age!==null&&Number.isFinite(age)&&age<=450;
- const state=fresh?last.state:'UNKNOWN';
+ const state=fresh&&!statusFetchFailed?last.state:'UNKNOWN';
  const known=state==='OPEN'||state==='CLOSED';
- document.getElementById('attendance-section').hidden=state==='CLOSED';
+ document.getElementById('attendance-section').hidden=state!=='OPEN';
  renderClosedMessage(state);
  const motd=document.getElementById('motd');
  motd.textContent=motdMessage;
  motd.hidden=state!=='OPEN'||!motdMessage;
+ document.getElementById('motd-section').hidden=motd.hidden;
  card.className=known?(state==='OPEN'?'open':'closed'):'unknown';
  lamp.textContent=state==='OPEN'?'🟢':state==='CLOSED'?'🔴':'⚪';
  title.textContent=state==='OPEN'?"BOYS R BUZZIN'":state==='CLOSED'?"BOYS AIN'T BUZZIN'":'SERVICE UNAVAILABLE';
- detail.textContent=known?(state==='OPEN'?'GarageMahal is OPEN':'GarageMahal is CLOSED'):'GarageMahal status is unknown';
+ detail.hidden=known;
+ detail.textContent=statusFetchFailed?'We couldn’t confirm the garage’s status.':'The garage hasn’t checked in recently.';
  const changed=Date.parse(last?.lastChanged??'');
  const since=document.getElementById('since');
- since.textContent=known&&Number.isFinite(changed)&&changed<=Date.now()
-  ? (state==='OPEN'?'Open':'Closed')+' since '+new Date(changed).toLocaleString()+' • '+formatAge(Math.floor((Date.now()-changed)/1000))
-  : '';
- stamp.textContent=age===null?'No confirmed heartbeat':('Last confirmed '+(formatAge(age)+' ago')+' • '+new Date(last.lastSeen).toLocaleString());
+ const validChanged=Number.isFinite(changed)&&changed<=Date.now();
+ const date=new Date(changed),today=new Date().toDateString()===date.toDateString();
+ since.textContent=known&&validChanged?(state==='OPEN'?'Open':'Closed')+' since '+(today?'':date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' at ')+date.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):'';
+ document.getElementById('changed-detail').textContent=validChanged?'Last state change: '+date.toLocaleString()+' • '+formatAge(Math.floor((Date.now()-changed)/1000))+' ago':'No confirmed state change';
+
+ stamp.textContent=age===null||!Number.isFinite(age)?'No confirmed heartbeat':('Last confirmed '+(formatAge(age)+' ago')+' • '+new Date(last.lastSeen).toLocaleString());
+ const unavailableStamp=document.getElementById('unavailable-stamp');
+ unavailableStamp.hidden=known;unavailableStamp.textContent=stamp.textContent;
 }
 async function refresh(){
  try{
   const response=await fetch('/api/public-status',{cache:'no-store'});
   if(!response.ok)throw Error('HTTP '+response.status);
-  last=await response.json();
- }catch(e){last=null;}
+  last=await response.json();statusFetchFailed=false;
+ }catch(e){statusFetchFailed=true;}
  render();
 }
 refresh();setInterval(refresh,15000);setInterval(()=>{render();renderAttendance();},1000);
@@ -107,7 +143,7 @@ const attendanceButton=document.getElementById('attendance-button');
 const comingButton=document.getElementById('coming-button');
 function updateAttendanceVisibility(){
  const age=last?.lastSeen?(Date.now()-Date.parse(last.lastSeen))/1000:NaN;
- attendanceButton.hidden=!(last?.state==='OPEN'&&Number.isFinite(age)&&age>=0&&age<=450&&attendance?.canCheckIn);
+ attendanceButton.hidden=!(!statusFetchFailed&&last?.state==='OPEN'&&Number.isFinite(age)&&age>=0&&age<=450&&attendance?.canCheckIn);
  comingButton.hidden=attendanceButton.hidden||!!(attendance?.checkedIn&&attendance.expiresAt>Date.now());
 }
 function renderAttendance(){
@@ -117,13 +153,14 @@ function renderAttendance(){
  const count=document.getElementById('attendance-count'),note=document.getElementById('attendance-note');
  const checked=attendance?.checkedIn&&attendance.expiresAt>Date.now();
  const coming=attendance?.onMyWay&&attendance.comingExpiresAt>Date.now();
- count.textContent=attendance?(attendance.available?attendance.count+' '+(attendance.count===1?'buddy':'buddies')+' checked in':'Attendance unavailable'):'Check-ins unavailable';
+ count.textContent=attendance?(attendance.available?attendance.count+' here':'Attendance unavailable'):'Check-ins unavailable';
  attendanceButton.textContent=checked?"I'm leaving":"I'm here";
  attendanceButton.disabled=attendanceBusy||!attendance||(!checked&&!attendance.canCheckIn);
  document.getElementById('coming-count').textContent=attendance?.available?(attendance.comingCount??0)+' on the way':'';
+ document.getElementById('count-dot').hidden=!attendance?.available;
  comingButton.textContent=coming?'Cancel on my way':'On my way';
  comingButton.disabled=attendanceBusy||!attendance?.canCheckIn;
- note.textContent=attendanceError||(checked?"You’re checked in.":coming?'You’re on the way. Tap “I’m here” when you arrive.':attendance?.canCheckIn?'Check in when you arrive.':'Check-in is available while the GarageMahal is open.');
+ note.textContent=attendanceError||(checked?"You’re checked in.":coming?'You’re on the way. Tap “I’m here” when you arrive.':'');
 }
 let attendanceError='';
 async function refreshAttendance(){

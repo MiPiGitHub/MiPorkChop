@@ -1,9 +1,9 @@
 name: MiPorkChop software checks
 on:
   push:
-    branches: [2026ReSmoked, 2026HardwareTesting, main]
+    branches: [2026ReSmoked, 2026HardwareTesting, main, feature/viewer-cleanup]
   pull_request:
-    branches: [2026ReSmoked, 2026HardwareTesting, main]
+    branches: [2026ReSmoked, 2026HardwareTesting, main, feature/viewer-cleanup]
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -23,6 +23,7 @@ jobs:
           node tests/manual-counts.test.mjs
           node tests/nicknames-whois.test.mjs
           node tests/prompt-host.test.mjs
+          node tests/viewer-cleanup.test.mjs
       - name: Python syntax
         run: python -m py_compile src/porkchop.py tests/test_porkchop.py
       - name: Shell syntax

@@ -12,7 +12,7 @@ Lists refresh every 15 seconds, hide expired entries locally, and disappear when
 
 Icons and Dave’s manual naming controls are deferred.
 
-Deployment: merge the testing branch into main and let Cloudflare deploy. The Durable Object creates the profiles table automatically. No extra secret or Pi update is required.
+Release status: nickname/WHOIS shipped in PR #12, followed by the first-time prompt and automatic host in PR #13. Both were confirmed live. For future updates, merge the testing branch into main and verify the Cloudflare deployment. The Durable Object creates the profiles table automatically. No extra secret or Pi update is required.
 
 Validation: run the attendance, qr-action, coming-motd, manual-counts, and nicknames-whois test files under tests with Node 24.
 
@@ -27,4 +27,4 @@ A fresh OPEN heartbeat automatically includes one host named PorkChop in WHOIS a
 
 Guest check-ins, six-hour expiry, fifteen-minute inbound expiry, and manual additions continue normally. A nickname does not prove identity or merge visitors. Character aliases remain isolated on the experimental branch.
 
-Additional validation: node tests/prompt-host.test.mjs covers the prompt against the real attendance API and the automatic host lifecycle. Visual browser review remains pending.
+Additional validation: node tests/prompt-host.test.mjs covers the prompt against the real attendance API and the automatic host lifecycle. On October 23, 2026, Matt reported: “Function tested and working well,” following deployment of the prompt and automatic host. This records user functional acceptance; it does not claim exhaustive testing on every browser or device.

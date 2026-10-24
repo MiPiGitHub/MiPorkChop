@@ -1,8 +1,6 @@
 # On my way and Dave’s message board
 
-Release source: `main`, after merging `2026HardwareTesting`. A successful
-Cloudflare deployment is required before using the new features. No Raspberry Pi
-update is needed.
+Release source: `main`. These features are deployed; MOTD secret configuration and working editing were confirmed earlier. No Raspberry Pi update is needed for these web features. Verify the active Cloudflare deployment after future releases.
 
 ## On my way
 
@@ -27,7 +25,19 @@ The public viewer displays the saved message as plain text only while OPEN.
 It refreshes about every 15 seconds. Messages persist across closing/reopening
 until Dave edits or clears them; they do not expire at midnight.
 
-## One-time Cloudflare configuration before enabling editing
+## Manual buddy counts and automatic host
+
+MOTD shows Checked in and On the way totals, with editable **Manually added** fields. Each total combines browser attendance and manual additions; Checked in also includes **1 host (PorkChop)** while the garage has a fresh OPEN status.
+
+Enter the number of extra buddies to include, from 0 to 500, and save that category. Zero removes its manual contribution. Editing does not remove browser check-ins. Adjustments require a fresh OPEN status and Dave’s authenticated PIN session.
+
+Manual checked-in counts expire six hours after a changed value is saved; manual inbound counts expire after fifteen minutes. Saving an unchanged value does not renew its expiry. Closing clears both manual counts. Reduce manual additions when a manually counted buddy checks in or arrives, to avoid double counting.
+
+Dave should not check himself in or manually add himself: PorkChop is automatic. The site cannot associate his browser with that host identity. Naming manual additions is a future feature.
+
+For the optional first-time nickname prompt and WHOIS roster, see [Nicknames and WHOIS](Nicknames-and-WHOIS.md).
+
+## One-time Cloudflare configuration (already completed for this deployment)
 
 On the existing `miporkchop-api` Worker, add a **Secret** named `MOTD_PIN` with the
 four-digit PIN agreed with Matt. Keep it a string to preserve the leading zero.
@@ -57,32 +67,26 @@ node scripts/sync-viewer.mjs
 node tests/attendance.test.mjs
 node tests/qr-action.test.mjs
 node tests/coming-motd.test.mjs
+node tests/manual-counts.test.mjs
+node tests/nicknames-whois.test.mjs
+node tests/prompt-host.test.mjs
 ```
 
 Use Node 24 or another supported version with `node:sqlite`. After deployment,
 confirm on a phone: inbound → arrived, cancel inbound, PIN login (including the
 leading zero), preset editing/save, public display, clear, and lock.
 
-## Next steps — release checklist
+## Release status and future verification
 
-- [ ] Merge the tested `2026HardwareTesting` changes into `main`.
-- [ ] In Cloudflare, open `miporkchop-api` and confirm the deployment for that
-  merge shows **Ready**. A merge alone does not confirm the live version.
-- [ ] Add the `MOTD_PIN` **Secret** with the PIN agreed with Matt (preserve its
-  leading zero). Do not put the value in these docs or GitHub. Confirm any
-  deployment caused by saving the secret completes successfully.
-- [ ] Open the HTTPS viewer on a phone and refresh. With the switch open for
-  visitors, test **On my way**, **Cancel on my way**, and **I'm here**.
-- [ ] Confirm arrival removes the inbound count and adds one checked-in buddy.
-  Leave a separate inbound browser untouched for 15 minutes and confirm expiry.
-- [ ] Open `/MOTD`, unlock, pick a preset, edit and save it. Verify the public
-  message while OPEN, then test Clear and Lock.
-- [ ] Scan both printable QR images from `images/` in the same phone browser.
-  Confirm check-in and checkout, and that repeated check-in does not duplicate it.
-- [ ] Confirm CLOSED hides attendance and shows the note to text Dave.
-- [ ] Finish the pending hardware checks: service starts after a Pi reboot,
-  attendance buttons hide during stale/unavailable status, and LED/resistor work
-  after installation.
+The initial release, MOTD secret setup, and later manual-count release are complete. Nicknames/WHOIS shipped in PR #12, and the first-time prompt plus automatic PorkChop host shipped in PR #13. The live prompt, API fields, and PorkChop roster entry were checked after deployment. On October 23, 2026, Matt confirmed the latest functionality was tested and working well.
 
-Software tests cover the new behavior locally. The unchecked items above are
-live-device/deployment checks; do not treat them as passed until observed.
+For future changes, use this reusable checklist; it is not a list of outstanding initial setup tasks:
+
+- Run the relevant software checks before merging.
+- Merge approved changes into main and verify the live Cloudflare version.
+- Check affected flows on a phone: inbound → arrived, nickname Save/Skip, checkout, and current WHOIS lists.
+- For editor changes, check PIN login, message save/clear/lock, and manual additions.
+- For attendance changes, check expiry, duplicate requests, closure, stale status, and the single automatic host.
+- Keep the separate character-alias experiment out of a release unless explicitly approved.
+
+The README remains the deployment task list for enclosure assembly and mounting. This documentation update does not assert those physical steps are complete.
