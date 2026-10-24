@@ -6,19 +6,14 @@ MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming 
 
 ## Architecture
 
-```text
-SPST switch (GPIO17) ──► Raspberry Pi: src/porkchop.py ── HTTPS POST /api/status ──► Cloudflare Worker: src/worker.js
-                              │                                                        │
-                              └──► Green LED (GPIO27)                            STATUS_KV storage
-                                                                                       │
-                                                           public browser viewer ◄── GET /api/public-status
-```
+The Pi sends authenticated switch reports to the Worker.  Dave's PIN-protected MOTD backup control also reaches the Worker.  The shared Attendance Durable Object resolves which control has authority and supplies effective status to the public viewer, WHOIS, and check-ins.  STATUS_KV retains a legacy mirror of physical-device reports.
+
 
 - **MiButcher.sh:** Optional Raspberry Pi installer/maintenance command. Does not run continuously.
 - **systemd/porkchop.service:** Linux service definition; runs `/opt/miporkchop/porkchop.py`.
 - **src/porkchop.py:** Reads GPIO, drives LED, reports changes and sends a heartbeat approximately every 150 seconds.
-- **src/worker.js:** Runs at Cloudflare, accepts authenticated device writes, stores status in KV, and serves the viewer, attendance APIs, WHOIS, and MOTD.
-- **src/attendance.js / src/motd.js:** The shared Attendance Durable Object serializes browser check-ins, inbound visits, optional nicknames, manual counts, and PIN-protected message editing.
+- **src/worker.js:** Runs at Cloudflare, accepts authenticated device writes, mirrors device status in KV, reads effective status from the Durable Object, and serves the viewer, attendance APIs, WHOIS, and MOTD.
+- **src/attendance.js / src/motd.js:** The shared Attendance Durable Object serializes browser check-ins, inbound visits, optional nicknames, manual counts, and PIN-protected message editing and backup control.
 - **src/viewer.html:** Readable source for the public UI; a copy is embedded in `worker.js` for direct Cloudflare dashboard deployment. **If the viewer changes, update both copies.**
 
 ## Definitive state mapping
@@ -27,7 +22,8 @@ SPST switch (GPIO17) ──► Raspberry Pi: src/porkchop.py ── HTTPS POST /
 |---|---|---|---|
 | CLOSED (grounded; `Button.is_pressed`) | `OPEN` | ON | 🟢 BOYS R BUZZIN' |
 | OPEN (internal pull-up) | `CLOSED` | OFF | 🔴 BOYS AIN'T BUZZIN' |
-| No fresh heartbeat for over 450 seconds | `UNKNOWN` (computed by Worker) | Not remotely verifiable | ⚪ SERVICE UNAVAILABLE |
+| No fresh heartbeat for over 450 seconds, no manual setting | `UNKNOWN` | Not remotely verifiable | ⚪ SERVICE UNAVAILABLE |
+| MiPi unavailable; Dave selects backup ON/OFF | Manual `OPEN` / `CLOSED` | Not remotely controlled | Corresponding open/closed display |
 
 API state values are **uppercase and case-sensitive**. They represent **GarageMahal availability**, not electrical contact position.
 
@@ -39,12 +35,13 @@ API state values are **uppercase and case-sensitive**. They represent **GarageMa
 
 - `GET /`: public mobile-friendly viewer; fetches status every 15 seconds and updates elapsed time locally.
 - `GET /WHOIS` (also `/whois`): two-column public roster of arrived and inbound buddies.
-- `GET /MOTD` (also `/motd`): Dave’s PIN-protected message and manual-count editor.
+- `GET /MOTD` (also `/motd`): Dave’s PIN-protected message, manual-count, and offline backup-switch editor.
 - `GET /check-in`, `GET /check-out`: dedicated QR action pages; use the same browser for both.
 - `GET /api/whois`: public current roster, without browser identifiers.
 - `GET /api/attendance`, `POST /api/attendance`: browser attendance, optional nickname, and remembered prompt-choice actions.
+- `GET /api/motd/garage`, `PUT /api/motd/garage`: PIN-session-protected backup status/control; writes are rejected while the MiPi is available.
 - `GET /health`: Worker readiness response.
-- `GET /api/public-status`: public, read-only JSON status; stale data returns `UNKNOWN` with `lastSeen`.
+- `GET /api/public-status`: public, read-only JSON status; effective status with physical-device `lastSeen`; unavailable device with no manual setting returns `UNKNOWN`.
 - `GET /api/status`: authenticated read with `VIEWER_API_TOKEN` (retained for administrative use).
 - `POST /api/status`: authenticated device update with `DEVICE_API_TOKEN`; JSON body `{"state":"OPEN"}` or `{"state":"CLOSED"}`.
 
@@ -76,7 +73,7 @@ Matt confirmed the software is working, including the public viewer, QR check-in
 
 - Optional remembered nicknames; first-time “I’m here” / “On my way” taps offer Save & continue, Skip, and Cancel. Saved names and Skip choices persist for up to one year in the same browser identity.
 - Two-column WHOIS: At the GarageMahal and On the way. Unnamed guests remain an unnamed count.
-- PorkChop automatically contributes one checked-in host while the garage has a fresh OPEN status. Dave does not need to check himself in or add himself manually.
+- PorkChop automatically contributes one checked-in host while the effective garage status is OPEN, including manual fallback. Dave does not need to check himself in or add himself manually.
 - Browser check-ins expire after six hours; inbound visits after fifteen minutes. Arrival clears inbound status. Closing clears both.
 - Dave can edit manual additions from MOTD. Those additions expire on the same timelines; they do not identify individual people.
 - Rotating sarcastic closed messages, cartoon backdrop, and home-screen support.
@@ -99,3 +96,7 @@ October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV wri
 ## Offline backup switch
 
 The PIN-protected MOTD page offers a guarded red ON/OFF switch only when the MiPi has never reported or its heartbeat is over 450 seconds old. Lift the cover, then flip ON to open. Flip OFF to close and automatically lower the cover. The next valid MiPi heartbeat takes control immediately and clears the manual override. Manual state otherwise remains until changed, including across browser reloads. See [Offline backup switch](docs/Offline-Backup-Switch.md).
+
+### Production acceptance — October 23, 2026 (America/Chicago)
+
+[PR #15](https://github.com/MiPiGitHub/MiPorkChop/pull/15) deployed the backup switch.  Matt confirmed manual ON and OFF work on MOTD, and the backup control disappears when the MiPi comes back online.  Automated checks passed before release.  No Pi software update or new secret was required.
