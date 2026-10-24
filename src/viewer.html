@@ -61,7 +61,7 @@ dialog::backdrop{background:#000b}dialog h2{font-size:1.4rem;margin-top:0}dialog
 <p id="nickname-feedback" role="status"></p></form></details>
 <details><summary>Add to Home Screen</summary><p>iPhone or iPad: open in Safari, tap Share, then Add to Home Screen.</p><p>Android: open in Chrome, tap the menu, then Add to Home screen or Install app if offered.</p><p>An internet connection is required for current status.</p></details>
 <details><summary>How check-in works</summary><p>Optional estimate, one person per browser. On the way expires after 15 minutes; check-in after 6 hours. Closing clears both. PorkChop is counted automatically while open.</p><p>Use the same browser to check out. Clearing cookies or switching browsers may require entering your nickname again. No GPS.</p></details>
-<details id="status-details"><summary>Status details</summary><p id="changed-detail"></p><p class="stamp" id="stamp"></p><p>Updates are checked every 15 seconds. If the garage hasn’t reported in over 7½ minutes, its status is unavailable.</p></details>
+<details id="status-details"><summary>Status details</summary><p id="changed-detail"></p><p class="stamp" id="stamp"></p><p>Updates are checked every 15 seconds. If the MiPi hasn’t reported in over 7½ minutes, Dave can use the backup switch on MOTD.</p></details>
 </details></footer></main>
 <dialog id="nickname-prompt" aria-labelledby="prompt-title">
 <form id="nickname-prompt-form"><h2 id="prompt-title">What do the boys call you?</h2>
@@ -102,7 +102,7 @@ function formatAge(age){
  return seconds+' seconds';
 }
 function render(){
- const age=last?.lastSeen?Math.max(0,Math.floor((Date.now()-Date.parse(last.lastSeen))/1000)):null;
+ const age=(last?.source==='manual'||last?.lastSeen)?Math.max(0,Math.floor((Date.now()-Date.parse(last.source==='manual'?last.confirmedAt:last.lastSeen))/1000)):null;
  const fresh=age!==null&&Number.isFinite(age)&&age<=450;
  const state=fresh&&!statusFetchFailed?last.state:'UNKNOWN';
  const known=state==='OPEN'||state==='CLOSED';
@@ -124,7 +124,7 @@ function render(){
  since.textContent=known&&validChanged?(state==='OPEN'?'Open':'Closed')+' since '+(today?'':date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' at ')+date.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):'';
  document.getElementById('changed-detail').textContent=validChanged?'Last state change: '+date.toLocaleString()+' • '+formatAge(Math.floor((Date.now()-changed)/1000))+' ago':'No confirmed state change';
 
- stamp.textContent=age===null||!Number.isFinite(age)?'No confirmed heartbeat':('Last confirmed '+(formatAge(age)+' ago')+' • '+new Date(last.lastSeen).toLocaleString());
+ stamp.textContent=last?.source==='manual'?'Dave’s backup switch · Last confirmed '+formatAge(age??0)+' ago':age===null||!Number.isFinite(age)?'No confirmed heartbeat':('Last confirmed '+(formatAge(age)+' ago')+' • '+new Date(last.lastSeen).toLocaleString());
  const unavailableStamp=document.getElementById('unavailable-stamp');
  unavailableStamp.hidden=known;unavailableStamp.textContent=stamp.textContent;
 }
@@ -142,7 +142,7 @@ let attendance=null,attendanceBusy=false,nicknameDirty=false,pendingAttendanceAc
 const attendanceButton=document.getElementById('attendance-button');
 const comingButton=document.getElementById('coming-button');
 function updateAttendanceVisibility(){
- const age=last?.lastSeen?(Date.now()-Date.parse(last.lastSeen))/1000:NaN;
+ const age=(last?.source==='manual'||last?.lastSeen)?(Date.now()-Date.parse(last.source==='manual'?last.confirmedAt:last.lastSeen))/1000:NaN;
  attendanceButton.hidden=!(!statusFetchFailed&&last?.state==='OPEN'&&Number.isFinite(age)&&age>=0&&age<=450&&attendance?.canCheckIn);
  comingButton.hidden=attendanceButton.hidden||!!(attendance?.checkedIn&&attendance.expiresAt>Date.now());
 }

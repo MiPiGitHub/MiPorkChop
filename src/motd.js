@@ -1,3 +1,4 @@
+import { garageStatus, clearAttendance } from './garage-state.js';
 // Private PIN validation and sessions stay in the Durable Object, never in HTML.
 const SESSION_MS=8*60*60*1000,WINDOW_MS=15*60*1000;
 const COOKIE='__Host-miporkchop-admin';
@@ -8,6 +9,8 @@ async function hash(value){
 }
 export class Motd {
  constructor(ctx,env){
+  ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS manual_garage (id INTEGER PRIMARY KEY, state TEXT NOT NULL, changed INTEGER NOT NULL)');
+  ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS garage_clock (id INTEGER PRIMARY KEY, changed INTEGER NOT NULL)');
   this.ctx=ctx;this.env=env;this.sql=ctx.storage.sql;
   this.sql.exec('CREATE TABLE IF NOT EXISTS manual_counts (kind TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS motd (id INTEGER PRIMARY KEY, message TEXT NOT NULL, updated INTEGER NOT NULL)');
@@ -19,11 +22,11 @@ export class Motd {
   const inbound=[...this.sql.exec('SELECT COUNT(*) AS count FROM inbound WHERE expires>?',now)][0].count;
   const rows=[...this.sql.exec('SELECT kind,count,expires FROM manual_counts WHERE expires>?',now)];
   const manual=rows.find(r=>r.kind==='checked'),coming=rows.find(r=>r.kind==='coming');
-  const garage=[...this.sql.exec('SELECT state,seen FROM garage WHERE id=1')][0];
-  const hostCount=garage?.state==='OPEN'&&now-garage.seen<=450000?1:0;
+  const garage=garageStatus(this.sql,now);
+  const hostCount=garage.state==='OPEN'?1:0;
   return {hostCount,count:actual+(manual?.count??0)+hostCount,comingCount:inbound+(coming?.count??0),
    browserCount:actual,browserComingCount:inbound,manualCount:manual?.count??0,manualComingCount:coming?.count??0,
-   canAdjust:garage?.state==='OPEN'&&now-garage.seen<=450000};
+   canAdjust:garage.state==='OPEN'};
  }
  async fetch(request){
   const path=new URL(request.url).pathname,method=request.method;
@@ -72,6 +75,16 @@ export class Motd {
    }
    const session=[...this.sql.exec('SELECT pin_hash FROM motd_sessions WHERE token=?',tokenHash)][0];
    if(!session||session.pin_hash!==pinHash)return json({error:'Please enter your PIN'},401);
+   if(path==='/motd/garage'){
+    if(method==='GET')return json(garageStatus(this.sql,now));
+    if(method!=='PUT')return json({error:'Method not allowed'},405);
+    if(!['OPEN','CLOSED'].includes(body.state))return json({error:'Choose OPEN or CLOSED'},400);
+    if(garageStatus(this.sql,now).deviceAvailable)return json({error:'MiPi is online. Its physical switch has control.'},409);
+    const previous=garageStatus(this.sql,now);
+    if(previous.source!=='manual'||previous.state!==body.state)this.sql.exec('INSERT OR REPLACE INTO manual_garage VALUES (1,?,?)',body.state,now);
+    if(body.state==='CLOSED')clearAttendance(this.sql);
+    return json(garageStatus(this.sql,now));
+   }
    if(path==='/motd/counts'){
     if(method==='GET')return json(this.counts(now));
     if(method!=='PUT')return json({error:'Method not allowed'},405);

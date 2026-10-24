@@ -1,4 +1,5 @@
 // One shared Durable Object serializes attendance and device-state changes.
+import { garageStatus } from './garage-state.js';
 import { Motd } from './motd.js';
 const SIX_HOURS=6*60*60*1000;
 const FIFTEEN_MINUTES=15*60*1000;
@@ -14,21 +15,21 @@ export class Attendance {
   this.sql.exec("CREATE TABLE IF NOT EXISTS garage (id INTEGER PRIMARY KEY, state TEXT, seen INTEGER)");
  }
  roster(now){
-  const garage=[...this.sql.exec("SELECT state,seen FROM garage WHERE id=1")][0];
-  const state=garage&&now-garage.seen<=450000?garage.state:'UNKNOWN';
+  const garage=garageStatus(this.sql,now);
+  const state=garage.state;
   const list=(table,kind)=>{
    if(state!=='OPEN')return [];
    const rows=[...this.sql.exec("SELECT p.name AS name,v.expires AS expiresAt FROM "+table+" v LEFT JOIN profiles p ON p.id=v.id AND p.expires>? WHERE v.expires>? ORDER BY p.name COLLATE NOCASE",now,now)];
-   if(kind==='checked')rows.unshift({name:'PorkChop',host:true,expiresAt:garage.seen+450000});
+   if(kind==='checked')rows.unshift({name:'PorkChop',host:true,expiresAt:(garage.source==='manual'?now:Date.parse(garage.lastSeen))+450000});
    const manual=[...this.sql.exec("SELECT count,expires FROM manual_counts WHERE kind=? AND expires>?",kind,now)][0];
    if(manual?.count)rows.push({name:null,count:manual.count,expiresAt:manual.expires});
    return rows;
   };
-  return {state,lastSeen:garage?.seen??null,here:list('visits','checked'),coming:list('inbound','coming')};
+  return {state,lastSeen:garage.source==='manual'?now:Date.parse(garage.lastSeen),here:list('visits','checked'),coming:list('inbound','coming')};
  }
  async fetch(request){
   const path=new URL(request.url).pathname;
-  if(path==="/motd"||path==="/motd/session"||path==="/motd/counts")return this.motd.fetch(request);
+  if(path==="/motd"||path==="/motd/session"||path==="/motd/counts"||path==="/motd/garage")return this.motd.fetch(request);
   let body={};
   if(request.method==="POST"){
    try{const raw=await request.text();if(raw.length>2048)return reply({error:"Request too large"},413);body=JSON.parse(raw);if(!body||typeof body!=="object"||Array.isArray(body))return reply({error:"Invalid object"},400);}catch{return reply({error:"Invalid JSON"},400);}
@@ -42,6 +43,9 @@ export class Attendance {
    this.sql.exec("DELETE FROM manual_counts WHERE expires<=?",now);
    if(path==="/device"&&request.method==="POST"){
     if(!["OPEN","CLOSED"].includes(body.state))return reply({error:"Invalid state"},400);
+    const previous=garageStatus(this.sql,now);
+    if(previous.state!==body.state||previous.source!=='physical-switch')this.sql.exec('INSERT OR REPLACE INTO garage_clock VALUES (1,?)',now);
+    this.sql.exec('DELETE FROM manual_garage');
     this.sql.exec("INSERT OR REPLACE INTO garage VALUES (1,?,?)",body.state,now);
     if(body.state==="CLOSED"){
      this.sql.exec("DELETE FROM visits");
@@ -50,12 +54,13 @@ export class Attendance {
     }
     return reply({ok:true});
    }
+   if(path==="/status")return request.method==="GET"?reply(garageStatus(this.sql,now)):reply({error:"Method not allowed"},405);
    if(path==="/whois")return request.method==="GET"?reply(this.roster(now)):reply({error:"Method not allowed"},405);
    if(path!=="/attendance")return reply({error:"Not found"},404);
    const id=request.headers.get("X-Visitor-ID");
    if(!/^[0-9a-f-]{36}$/.test(id??""))return reply({error:"Missing browser identity"},400);
-   const garage=[...this.sql.exec("SELECT state,seen FROM garage WHERE id=1")][0];
-   const available=!!garage&&now-garage.seen<=450000;
+   const garage=garageStatus(this.sql,now);
+   const available=garage.state!=='UNKNOWN';
    const canCheckIn=available&&garage.state==="OPEN";
    const choice=body.nicknameChoice;
    const validName=name=>typeof name==='string'&&name.length<=40&&!/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(name);

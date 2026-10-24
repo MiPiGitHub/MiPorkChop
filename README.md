@@ -2,7 +2,7 @@
 
 **Baseline branch:** `main` · **Hardware testing branch:** `2026HardwareTesting` · **Updated:** October 23, 2026 · **Status:** Software and service are working, as confirmed by Matt. Final enclosure assembly and mounting remain.
 
-MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming visitors. It is **not** part of the standard MiPi build. The 2023 Google Forms prototype remains historical; the active implementation uses Cloudflare Workers, KV for device status, and an Attendance Durable Object for attendance, nicknames, and the message board.
+MiPorkChop is a hobby project that reports whether the GarageMahal is welcoming visitors. It is **not** part of the standard MiPi build. The 2023 Google Forms prototype remains historical; the active implementation uses Cloudflare Workers, KV for the legacy device-status mirror, and an Attendance Durable Object as the authoritative source for effective garage status, attendance, nicknames, and the message board.
 
 ## Architecture
 
@@ -95,3 +95,7 @@ The remaining deployment steps are:
 Additional feature ideas are optional future enhancements, not requirements for completing this deployment.
 
 October 22, 2026 decision: heartbeat every 150 seconds (approximately 576 KV writes/day), stale status after 450 seconds (7.5 minutes). Switch changes are reported immediately. Cloudflare GitHub Builds is connected to `main`; deployments are triggered by commits to `main`. Check Cloudflare Deployments for the active version.
+
+## Offline backup switch
+
+The PIN-protected MOTD page offers a guarded red ON/OFF switch only when the MiPi has never reported or its heartbeat is over 450 seconds old. Lift the cover, then flip ON to open. Flip OFF to close and automatically lower the cover. The next valid MiPi heartbeat takes control immediately and clears the manual override. Manual state otherwise remains until changed, including across browser reloads. See [Offline backup switch](docs/Offline-Backup-Switch.md).
